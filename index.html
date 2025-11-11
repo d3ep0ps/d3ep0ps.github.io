@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>d3ep0ps — depth over hype</title>
-  <meta name="description" content="d3ep0ps — practical guides on Linux, FreeBSD, networking, cloud and AI. Depth over hype.">
+  <meta name="description" content="d3ep0ps — practical guides on Linux, FreeBSD, networking, cloud, and AI. Depth over hype.">
   <style>
     :root {
       --bg: #0d0d0d;
@@ -33,7 +33,7 @@
       gap: 1rem;
     }
     .logo {
-      font-family: ui-monospace, SFMono-Regular, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-weight: 600;
       letter-spacing: 0.06em;
       display: flex;
@@ -128,7 +128,7 @@
       background: rgba(13,13,13,0.35);
       border: 1px solid rgba(255,255,255,0.022);
       border-radius: var(--radius);
-      padding: 1rem 1rem 1rem;
+      padding: 1rem;
     }
     footer {
       text-align: center;
@@ -138,12 +138,8 @@
     }
     a { color: var(--accent); }
     @media (max-width: 800px) {
-      .hero {
-        grid-template-columns: 1fr;
-      }
-      header {
-        flex-wrap: wrap;
-      }
+      .hero { grid-template-columns: 1fr; }
+      header { flex-wrap: wrap; }
     }
   </style>
 </head>
@@ -164,40 +160,47 @@
       <div>
         <h1>systems, networks, intelligence.</h1>
         <p class="subtitle">
-          I’m <strong>Vitaliy Zhhuta</strong> (1984), a system architect.  
-          <br/>I run <strong>d3ep0ps</strong> to teach how tech really works — from Linux and FreeBSD to cloud and AI — without the hype.
+          I’m <strong>Vitaliy Zhhuta</strong> (1984), a system architect.<br/>
+          I run <strong>d3ep0ps</strong> to teach how tech really works — from Linux and FreeBSD to cloud and AI — without the hype.
         </p>
         <div class="button-row">
-          <a class="btn" href="https://medium.com/@d3ep0ps">Read the latest on Medium</a>
+          <a class="btn" href="https://medium.com/@d3ep0ps">Read on Medium</a>
           <a class="btn btn-secondary" href="https://github.com/d3ep0ps">View labs on GitHub</a>
         </div>
       </div>
+
       <div>
         <div class="panel">
           <h2>Current series: learn like an engineer</h2>
           <ul class="mini-list">
-            <li>
-              <div>
-                <strong>Why I Write: From Commands to Cloud and AI</strong><br/>
-                <span class="pill">philosophy · intro</span>
-              </div>
-            </li>
-            <li>
-              <div>
-                <strong>Choosing Your OS: Linux vs FreeBSD</strong><br/>
-                <span class="pill">foundations · mindset · BSD</span>
-              </div>
-            </li>
-            <li>
-              <div>
-                <strong>Next: Mastering Text Editing on Unix (vi, vim, ex, sed)</strong><br/>
-                <span class="pill">hands-on · config editing</span>
-              </div>
-            </li>
+            <li><a href="#why-i-write" style="color:inherit; text-decoration:none;">
+              <strong>Why I Write: From Commands to Cloud and AI</strong><br/>
+              <span class="pill">philosophy · intro</span>
+            </a></li>
+            <li><a href="#linux_vs_freebsd" style="color:inherit; text-decoration:none;">
+              <strong>Choosing Your OS: Linux vs FreeBSD</strong><br/>
+              <span class="pill">foundations · mindset</span>
+            </a></li>
+            <li><a href="#text_with_vi" style="color:inherit; text-decoration:none;">
+              <strong>Mastering Text Editing on Unix: vi, vim & beyond</strong><br/>
+              <span class="pill">hands-on · text editing</span>
+            </a></li>
+            <li><a href="#networking-foundations-ipv4-ipv6-linux-freebsd" style="color:inherit; text-decoration:none;">
+              <strong>Networking Foundations: IPv4, IPv6, and Configuration</strong><br/>
+              <span class="pill">networking · labs</span>
+            </a></li>
           </ul>
         </div>
       </div>
     </div>
+
+    <!-- Article viewer -->
+    <section id="article-viewer" style="max-width:980px; margin:2rem auto; padding:1.5rem; background:#111; border-radius:14px; border:1px solid rgba(255,255,255,0.05);">
+      <p style="color:#9ea2a8; text-align:center;">
+        Select an article above to read it here — or explore more on
+        <a href="https://medium.com/@d3ep0ps" style="color:#00ffd1;">Medium</a>.
+      </p>
+    </section>
 
     <section>
       <h2 style="margin-bottom:.8rem;">What d3ep0ps is about</h2>
@@ -230,5 +233,47 @@
   <footer>
     d3ep0ps — depth over hype · born 1984 · made on Unix
   </footer>
+
+  <script>
+    // --- Simple hash-based router for inline article loading ---
+    const viewer = document.getElementById('article-viewer');
+
+    const routes = {
+      "why-i-write": "posts/why-i-write.html",
+      "linux_vs_freebsd": "posts/linux_vs_freebsd.html",
+      "text_with_vi": "posts/text_with_vi.html",
+      "networking-foundations-ipv4-ipv6-linux-freebsd": "posts/networking-foundations-ipv4-ipv6-linux-freebsd.html"
+    };
+
+    async function loadArticleFromHash() {
+      const hash = location.hash.replace('#','');
+      const file = routes[hash];
+      if (!file) {
+        viewer.innerHTML = `<p style="color:#9ea2a8; text-align:center;">
+          Select an article above to read it here — or explore more on 
+          <a href='https://medium.com/@d3ep0ps' style='color:#00ffd1;'>Medium</a>.
+        </p>`;
+        return;
+      }
+
+      viewer.innerHTML = `<p style='color:#9ea2a8; text-align:center;'>Loading <code>${hash}</code>...</p>`;
+      try {
+        const res = await fetch(file);
+        const html = await res.text();
+        viewer.innerHTML = `
+          <div style='text-align:right; margin-bottom:1rem;'>
+            <a href='/' style='color:#00ffd1; text-decoration:none;'>&lt; Back to main</a>
+          </div>
+          ${html}
+        `;
+        window.scrollTo({ top: viewer.offsetTop - 40, behavior: 'smooth' });
+      } catch (err) {
+        viewer.innerHTML = `<p style='color:red; text-align:center;'>⚠️ Failed to load article: ${file}</p>`;
+      }
+    }
+
+    window.addEventListener('hashchange', loadArticleFromHash);
+    window.addEventListener('load', loadArticleFromHash);
+  </script>
 </body>
 </html>
