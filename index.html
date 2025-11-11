@@ -12,7 +12,6 @@
       --text: #f3f3f3;
       --muted: #9ea2a8;
       --accent: #00ffd1;
-      --accent-soft: rgba(0,255,209,0.08);
       --radius: 14px;
     }
     * { box-sizing: border-box; }
@@ -22,6 +21,7 @@
       color: var(--text);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       line-height: 1.6;
+      overflow-x: hidden;
     }
     header {
       max-width: 980px;
@@ -33,7 +33,7 @@
       gap: 1rem;
     }
     .logo {
-      font-family: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
       font-weight: 600;
       letter-spacing: 0.06em;
       display: flex;
@@ -115,7 +115,7 @@
       color: var(--muted);
     }
     section {
-      max-width: 980px;
+      max-width: 1100px;
       margin: 1rem auto 2.2rem;
       padding: 0 1.5rem;
     }
@@ -141,7 +141,51 @@
       .hero { grid-template-columns: 1fr; }
       header { flex-wrap: wrap; }
     }
+    /* article viewer */
+    #article-viewer {
+      background: #111;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.05);
+      padding: 2rem 3vw;
+      margin: 2rem auto;
+      max-width: 1200px;
+      overflow-x: hidden;
+    }
+    #article-viewer h1,
+    #article-viewer h2,
+    #article-viewer h3 {
+      line-height: 1.25;
+      margin-top: 1.6rem;
+      margin-bottom: 1rem;
+    }
+    #article-viewer p,
+    #article-viewer ul,
+    #article-viewer ol,
+    #article-viewer pre,
+    #article-viewer code {
+      max-width: 100%;
+      word-wrap: break-word;
+    }
+    #article-viewer pre {
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      padding: 1rem;
+      overflow-x: auto;
+    }
+    #article-viewer img { max-width: 100%; height: auto; }
+    #article-viewer table {
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+    }
+    #article-viewer th, #article-viewer td {
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: .5rem .75rem;
+    }
   </style>
+  <!-- Markdown parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
   <header>
@@ -194,8 +238,7 @@
       </div>
     </div>
 
-    <!-- Article viewer -->
-    <section id="article-viewer" style="max-width:980px; margin:2rem auto; padding:1.5rem; background:#111; border-radius:14px; border:1px solid rgba(255,255,255,0.05);">
+    <section id="article-viewer">
       <p style="color:#9ea2a8; text-align:center;">
         Select an article above to read it here — or explore more on
         <a href="https://medium.com/@d3ep0ps" style="color:#00ffd1;">Medium</a>.
@@ -235,40 +278,41 @@
   </footer>
 
   <script>
-    // --- Simple hash-based router for inline article loading ---
-    const viewer = document.getElementById('article-viewer');
-
+    // map hash -> markdown file
     const routes = {
-      "why-i-write": "posts/why-i-write.html",
-      "linux_vs_freebsd": "posts/linux_vs_freebsd.html",
-      "text_with_vi": "posts/text_with_vi.html",
-      "networking-foundations-ipv4-ipv6-linux-freebsd": "posts/networking-foundations-ipv4-ipv6-linux-freebsd.html"
+      "why-i-write": "posts/why-i-write.md",
+      "linux_vs_freebsd": "posts/linux_vs_freebsd.md",
+      "text_with_vi": "posts/text_with_vi.md",
+      "networking-foundations-ipv4-ipv6-linux-freebsd": "posts/networking-foundations-ipv4-ipv6-linux-freebsd.md"
     };
 
+    const viewer = document.getElementById('article-viewer');
+
     async function loadArticleFromHash() {
-      const hash = location.hash.replace('#','');
+      const hash = location.hash.replace('#', '');
       const file = routes[hash];
       if (!file) {
         viewer.innerHTML = `<p style="color:#9ea2a8; text-align:center;">
-          Select an article above to read it here — or explore more on 
-          <a href='https://medium.com/@d3ep0ps' style='color:#00ffd1;'>Medium</a>.
+          Select an article above to read it here — or explore more on
+          <a href="https://medium.com/@d3ep0ps" style="color:#00ffd1;">Medium</a>.
         </p>`;
         return;
       }
 
-      viewer.innerHTML = `<p style='color:#9ea2a8; text-align:center;'>Loading <code>${hash}</code>...</p>`;
+      viewer.innerHTML = `<p style="color:#9ea2a8; text-align:center;">Loading <code>${file}</code>...</p>`;
       try {
         const res = await fetch(file);
-        const html = await res.text();
+        const md = await res.text();
+        const html = marked.parse(md);
         viewer.innerHTML = `
-          <div style='text-align:right; margin-bottom:1rem;'>
-            <a href='/' style='color:#00ffd1; text-decoration:none;'>&lt; Back to main</a>
+          <div style="text-align:right; margin-bottom:1rem;">
+            <a href="/" style="color:#00ffd1; text-decoration:none;">&lt; Back to main</a>
           </div>
           ${html}
         `;
         window.scrollTo({ top: viewer.offsetTop - 40, behavior: 'smooth' });
-      } catch (err) {
-        viewer.innerHTML = `<p style='color:red; text-align:center;'>⚠️ Failed to load article: ${file}</p>`;
+      } catch (e) {
+        viewer.innerHTML = `<p style="color:red; text-align:center;">Failed to load ${file}</p>`;
       }
     }
 
