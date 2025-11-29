@@ -1,5 +1,3 @@
-This is a complete rewrite that incorporates your required narrative arc.
-
 # The Sysadmin’s Editor in the Age of Cloud and IaC
 
 > Why we still need Vim and Neovim when VS Code exists. Moving from basic edits to engineering workflows.
