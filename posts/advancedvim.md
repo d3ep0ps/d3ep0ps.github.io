@@ -125,3 +125,23 @@ It now includes:
   * **Extended Cheatsheet:** A new guide covering intermediate power moves like macros, registers, and window splits.
 
 Go clone it, install the configs, and start building your muscle memory.
+
+
+
+### ☕ Offtopic: The Future of Editing (and Google’s Antigravity)
+
+Before we close, a note on the horizon.
+
+Some of you have heard or even tried emerging tools like Google’s "Antigravity" IDE—cloud-native, AI-driven environments that promise to abstract away the act of editing entirely. It is an exciting vision: real-time code generation, autonomous refactoring, and a workspace that adapts to your intent.
+
+Tools like this *will* change how we build. But they will not replace the need for understanding.
+
+Whatever these systems become—next-gen IDEs or autonomous agents—their output is still just text: Terraform modules, Kubernetes manifests, and system configurations.
+
+**You cannot let an AI manage your infrastructure if you don't understand the files it creates.**
+
+Antigravity may accelerate writing, generate boilerplate, and automate drudgery. But the engineer still needs a craft—a way to see structure, navigate complexity, and think precisely about configuration.
+
+The editor is not going away. In an age of generated code, it is becoming even more critical as our primary window into truth.
+
+Use AI to write infrastructure. Use a real editor to understand it.
