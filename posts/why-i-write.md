@@ -1,9 +1,6 @@
 # “Why I Write: From Commands to Cloud and AI”
 ## A calm, practical journey from the terminal prompt to intelligent infrastructure.
 
-Ця стаття — про мету створення d3ep0ps: допомагати людям зрозуміти системи — від Linux і FreeBSD до хмарних технологій та штучного інтелекту. Англомовна версія нижче.
-
----
 
 When I started working with systems, everything began in the terminal — configuring network interfaces, fixing DNS, rebuilding kernels. It was quiet, direct, and deeply satisfying.
 

@@ -305,6 +305,8 @@
       <span class="badge">depth over hype</span>
     </div>
     <nav>
+      <button id="lang-btn" class="btn btn-secondary"
+        style="padding: .2rem .6rem; font-size: .75rem; margin-right: 1rem;">UA</button>
       <a href="https://medium.com/@d3ep0ps"
         style="color:var(--muted); text-decoration:none; margin-right:.75rem;">Medium</a>
       <a href="https://github.com/d3ep0ps" style="color:var(--muted); text-decoration:none;">GitHub</a>
@@ -339,74 +341,7 @@
 
           <div class="mini-list-wrapper">
             <ul class="mini-list" id="article-list">
-              <!-- Adjust data-date to real dates when you want -->
-              <li data-date="2025-11-03">
-                <a href="#why-i-write" style="color:inherit; text-decoration:none;">
-                  <strong>Why I Write: From Commands to Cloud and AI</strong><br />
-                  <span class="pill">philosophy · intro</span>
-                </a>
-              </li>
-              <li data-date="2025-11-04">
-                <a href="#linux_vs_freebsd" style="color:inherit; text-decoration:none;">
-                  <strong>Choosing Your OS: Linux vs FreeBSD</strong><br />
-                  <span class="pill">foundations · mindset</span>
-                </a>
-              </li>
-              <li data-date="2025-11-06">
-                <a href="#text_with_vi" style="color:inherit; text-decoration:none;">
-                  <strong>Mastering Text Editing on Unix: vi, vim &amp; beyond</strong><br />
-                  <span class="pill">hands-on · text editing</span>
-                </a>
-              </li>
-              <li data-date="2025-11-11">
-                <a href="#networking-foundations-ipv4-ipv6-linux-freebsd" style="color:inherit; text-decoration:none;">
-                  <strong>Networking Foundations: IPv4, IPv6, and Configuration</strong><br />
-                  <span class="pill">networking · labs</span>
-                </a>
-              </li>
-              <li data-date="2025-11-13">
-                <a href="#firewall" style="color:inherit; text-decoration:none;">
-                  <strong>Securing Unix Systems: pf vs iptables — Why FreeBSD Still Wins.</strong><br />
-                  <span class="pill">security · unix firewalls</span>
-                </a>
-              </li>
-              <li data-date="2025-11-17">
-                <a href="#cloud-firewalls" style="color:inherit; text-decoration:none;">
-                  <strong>Firewalls in the Cloud: From pf to VPC Rules - A Mental Model Shift</strong><br />
-                  <span class="pill">cloud · mindset</span>
-                </a>
-              </li>
-              <li data-date="2025-11-19">
-                <a href="#iac" style="color:inherit; text-decoration:none;">
-                  <strong>Stop Clicking: The Journey to Infrastructure as Code</strong><br />
-                  <span class="pill">cloud · mindset</span>
-                </a>
-              </li>
-              <li data-date="2025-11-23">
-                <a href="#part1_ansible_ssh" style="color:inherit; text-decoration:none;">
-                  <strong>The Day-1 Server Security Checklist: Hardening SSH on Linux and FreeBSD</strong><br />
-                  <span class="pill">automation · ansible · mindset · cloud</span>
-                </a>
-              </li>
-              <li data-date="2025-11-27">
-                <a href="#part2_ansible_ssh" style="color:inherit; text-decoration:none;">
-                  <strong>The Day-1 Server Security Checklist: Building the Perimeter on Linux and
-                    FreeBSD</strong><br />
-                  <span class="pill">automation · ansible · security · firewall</span>
-                </a>
-              </li>
-              <li data-date="2025-11-29">
-                <a href="#advancedvim" style="color:inherit; text-decoration:none;">
-                  <strong>The Sysadmin’s Editor in the Age of Cloud and IaC</strong><br />
-                  <span class="pill">vim · neovim · iac · automation</span>
-                </a>
-              </li>
-              <li data-date="2025-12-01">
-                <a href="#before-containers" style="color:inherit; text-decoration:none;">
-                  <strong>The Lost Art of System Administration</strong><br />
-                  <span class="pill">foundations · lamp · dns · mail · containers</span>
-                </a>
-              </li>
+              <!-- Articles will be rendered here by JS -->
             </ul>
           </div>
         </div>
@@ -420,7 +355,7 @@
       </p>
     </section>
 
-    <section>
+    <section id="about-section">
       <h2 style="margin-bottom:.8rem;">What d3ep0ps is about</h2>
       <div class="cols">
         <div class="card">
@@ -438,7 +373,7 @@
       </div>
     </section>
 
-    <section>
+    <section id="links-section">
       <h2 style="margin-bottom:.8rem;">Links</h2>
       <p>
         → Articles: <a href="https://medium.com/@d3ep0ps">medium.com/@d3ep0ps</a><br />
@@ -453,85 +388,333 @@
   </footer>
 
   <script>
-    // map hash -> markdown file
-    const routes = {
-      "why-i-write": "posts/why-i-write.md",
-      "linux_vs_freebsd": "posts/linux_vs_freebsd.md",
-      "text_with_vi": "posts/text_with_vi.md",
-      "networking-foundations-ipv4-ipv6-linux-freebsd": "posts/networking-foundations-ipv4-ipv6-linux-freebsd.md",
-      "firewall": "posts/firewall.md",
-      "cloud-firewalls": "posts/cloud_firewalls.md",
-      "iac": "posts/iac.md",
-      "part1_ansible_ssh": "posts/part1.ansible_ssh.md",
-      "part2_ansible_ssh": "posts/part2.ansible_ssh.md",
-      "advancedvim": "posts/advancedvim.md",
-      "before-containers": "posts/before-containers.md"
+    // --- Data: Articles ---
+    const articles = [
+      {
+        id: "before-containers",
+        date: "2025-12-01",
+        en: { title: "The Lost Art of System Administration", tags: "foundations · lamp · dns · mail · containers" },
+        ua: { title: "Втрачене мистецтво системного адміністрування", tags: "основи · lamp · dns · mail · containers" }
+      },
+      {
+        id: "advancedvim",
+        date: "2025-11-29",
+        en: { title: "The Sysadmin’s Editor in the Age of Cloud and IaC", tags: "vim · neovim · iac · automation" },
+        ua: { title: "Редактор сисадміна в епоху хмар та IaC", tags: "vim · neovim · iac · автоматизація" }
+      },
+      {
+        id: "part2_ansible_ssh",
+        date: "2025-11-27",
+        en: { title: "The Day-1 Server Security Checklist: Building the Perimeter on Linux and FreeBSD", tags: "automation · ansible · security · firewall" },
+        ua: { title: "Чекліст безпеки сервера (День 1): Будуємо периметр на Linux та FreeBSD", tags: "автоматизація · ansible · безпека · firewall" }
+      },
+      {
+        id: "part1_ansible_ssh",
+        date: "2025-11-23",
+        en: { title: "The Day-1 Server Security Checklist: Hardening SSH on Linux and FreeBSD", tags: "automation · ansible · mindset · cloud" },
+        ua: { title: "Чекліст безпеки сервера (День 1): Посилення SSH на Linux та FreeBSD", tags: "автоматизація · ansible · мислення · cloud" }
+      },
+      {
+        id: "iac",
+        date: "2025-11-19",
+        en: { title: "Stop Clicking: The Journey to Infrastructure as Code", tags: "cloud · mindset" },
+        ua: { title: "Досить клікати: Шлях до Infrastructure as Code", tags: "cloud · мислення" }
+      },
+      {
+        id: "cloud-firewalls",
+        date: "2025-11-17",
+        en: { title: "Firewalls in the Cloud: From pf to VPC Rules - A Mental Model Shift", tags: "cloud · mindset" },
+        ua: { title: "Фаєрволи у хмарі: Від pf до правил VPC — Зміна ментальної моделі", tags: "cloud · мислення" }
+      },
+      {
+        id: "firewall",
+        date: "2025-11-13",
+        en: { title: "Securing Unix Systems: pf vs iptables — Why FreeBSD Still Wins.", tags: "security · unix firewalls" },
+        ua: { title: "Захист Unix систем: pf проти iptables — Чому FreeBSD досі перемагає.", tags: "безпека · unix firewalls" }
+      },
+      {
+        id: "networking-foundations-ipv4-ipv6-linux-freebsd",
+        date: "2025-11-11",
+        en: { title: "Networking Foundations: IPv4, IPv6, and Configuration", tags: "networking · labs" },
+        ua: { title: "Основи мереж: IPv4, IPv6 та конфігурація", tags: "мережі · лаби" }
+      },
+      {
+        id: "text_with_vi",
+        date: "2025-11-06",
+        en: { title: "Mastering Text Editing on Unix: vi, vim & beyond", tags: "hands-on · text editing" },
+        ua: { title: "Майстерність редагування тексту в Unix: vi, vim та інші", tags: "практика · редагування" }
+      },
+      {
+        id: "linux_vs_freebsd",
+        date: "2025-11-04",
+        en: { title: "Choosing Your OS: Linux vs FreeBSD", tags: "foundations · mindset" },
+        ua: { title: "Вибір ОС: Linux проти FreeBSD", tags: "основи · мислення" }
+      },
+      {
+        id: "why-i-write",
+        date: "2025-11-03",
+        en: { title: "Why I Write: From Commands to Cloud and AI", tags: "philosophy · intro" },
+        ua: { title: "Чому я пишу: Від командного рядка до хмар та ШІ", tags: "філософія · інтро" }
+      }
+    ];
+
+    // --- Data: UI Translations ---
+    const translations = {
+      en: {
+        badge: "depth over hype",
+        hero_h1: "systems, networks, intelligence.",
+        hero_p: "I’m <strong>Vitaliy Zhhuta</strong> (1984), a system architect.<br/>I run <strong>d3ep0ps</strong> to teach how tech really works — from Linux and FreeBSD to cloud and AI — without the hype.",
+        btn_medium: "Read on Medium",
+        btn_github: "View labs on GitHub",
+        series_title: "Current series: learn like an engineer",
+        sort_label: "Sort:",
+        sort_newest: "Newest",
+        sort_oldest: "Oldest",
+        viewer_placeholder: "Select an article above to read it here — or explore more on <a href=\"https://medium.com/@d3ep0ps\" style=\"color:#00ffd1;\">Medium</a>.",
+        loading: "Loading",
+        back: "&lt; Back to main",
+        load_fail: "Failed to load",
+        about_title: "What d3ep0ps is about",
+        card1_title: "Linux & FreeBSD",
+        card1_text: "Install, explore, and truly understand Unix-like systems. No copy–paste without explanation.",
+        card2_title: "Networking & homelab",
+        card2_text: "Interfaces, routing, firewalls, and the mental models to not break your LAN.",
+        card3_title: "Cloud & AI, slowly",
+        card3_text: "GCP, automation, intelligent agents — only after we master the foundation.",
+        links_title: "Links",
+        footer: "d3ep0ps — depth over hype · born 1984 · made on Unix"
+      },
+      ua: {
+        badge: "глибина понад хайп",
+        hero_h1: "системи, мережі, інтелект.",
+        hero_p: "Я <strong>Віталій Жгута</strong> (1984), системний архітектор.<br/>Я веду <strong>d3ep0ps</strong>, щоб навчати, як насправді працюють технології — від Linux і FreeBSD до хмар та ШІ — без зайвого хайпу.",
+        btn_medium: "Читати на Medium",
+        btn_github: "Лаби на GitHub",
+        series_title: "Поточна серія: вчись як інженер",
+        sort_label: "Сортувати:",
+        sort_newest: "Нові",
+        sort_oldest: "Старі",
+        viewer_placeholder: "Оберіть статтю вище, щоб читати тут — або дізнайтесь більше на <a href=\"https://medium.com/@d3ep0ps\" style=\"color:#00ffd1;\">Medium</a>.",
+        loading: "Завантаження",
+        back: "&lt; На головну",
+        load_fail: "Не вдалося завантажити",
+        about_title: "Про що d3ep0ps",
+        card1_title: "Linux та FreeBSD",
+        card1_text: "Встановлюйте, досліджуйте та розумійте Unix-подібні системи. Жодного copy-paste без пояснень.",
+        card2_title: "Мережі та homelab",
+        card2_text: "Інтерфейси, маршрутизація, фаєрволи та ментальні моделі, щоб не зламати ваш LAN.",
+        card3_title: "Хмари та ШІ, повільно",
+        card3_text: "GCP, автоматизація, інтелектуальні агенти — тільки після опанування основ.",
+        links_title: "Посилання",
+        footer: "d3ep0ps — глибина понад хайп · нар. 1984 · зроблено на Unix"
+      }
     };
 
+    // --- State ---
+    let currentLang = localStorage.getItem('d3ep0ps_lang') || 'en';
+    let currentSort = 'desc';
+
+    // --- DOM Elements ---
+    const langBtn = document.getElementById('lang-btn');
+    const articleList = document.getElementById('article-list');
     const viewer = document.getElementById('article-viewer');
 
-    async function loadArticleFromHash() {
-      const hash = location.hash.replace('#', '');
-      const file = routes[hash];
-      if (!file) {
-        viewer.innerHTML = `<p style="color:#9ea2a8; text-align:center;">
-          Select an article above to read it here — or explore more on
-          <a href="https://medium.com/@d3ep0ps" style="color:#00ffd1;">Medium</a>.
-        </p>`;
-        return;
-      }
+    // --- Functions ---
 
-      viewer.innerHTML = `<p style="color:#9ea2a8; text-align:center;">Loading <code>${file}</code>...</p>`;
-      try {
-        const res = await fetch(file);
-        const md = await res.text();
-        const html = marked.parse(md);
-        viewer.innerHTML = `
-          <div style="text-align:right; margin-bottom:1rem;">
-            <a href="/" style="color:#00ffd1; text-decoration:none;">&lt; Back to main</a>
-          </div>
-          ${html}
-        `;
-        window.scrollTo({ top: viewer.offsetTop - 40, behavior: 'smooth' });
-      } catch (e) {
-        viewer.innerHTML = `<p style="color:red; text-align:center;">Failed to load ${file}</p>`;
+    function setLanguage(lang) {
+      currentLang = lang;
+      localStorage.setItem('d3ep0ps_lang', lang);
+      renderPage();
+      // Reload article if one is open
+      if (location.hash) {
+        loadArticleFromHash();
       }
     }
 
-    window.addEventListener('hashchange', loadArticleFromHash);
-    window.addEventListener('load', loadArticleFromHash);
-  </script>
+    function toggleLanguage() {
+      setLanguage(currentLang === 'en' ? 'ua' : 'en');
+    }
 
-  <script>
-    // sorting for Current series list
-    (function () {
-      const list = document.getElementById('article-list');
-      if (!list) return;
+    function renderPage() {
+      const t = translations[currentLang];
 
-      const sortButtons = document.querySelectorAll('.sort-btn');
+      // Update Language Button
+      if (langBtn) langBtn.textContent = currentLang === 'en' ? 'Читати Українською' : 'Read in English';
 
-      function sortArticles(order) {
-        const items = Array.from(list.querySelectorAll('li'));
-        items.sort((a, b) => {
-          const da = new Date(a.dataset.date);
-          const db = new Date(b.dataset.date);
-          return order === 'asc' ? da - db : db - da;
-        });
-        items.forEach(item => list.appendChild(item));
+      // Update Static Text
+      const badge = document.querySelector('.badge');
+      if (badge) badge.textContent = t.badge;
+
+      const h1 = document.querySelector('h1');
+      if (h1) h1.innerHTML = t.hero_h1;
+
+      const subtitle = document.querySelector('.subtitle');
+      if (subtitle) subtitle.innerHTML = t.hero_p;
+
+      const btns = document.querySelectorAll('.button-row .btn');
+      if (btns.length >= 2) {
+        btns[0].textContent = t.btn_medium;
+        btns[1].textContent = t.btn_github;
       }
 
-      // default: newest first
-      sortArticles('desc');
+      const panelH2 = document.querySelector('.panel h2');
+      if (panelH2) panelH2.textContent = t.series_title;
 
-      sortButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          const order = btn.dataset.sort;
-          sortButtons.forEach(b => b.classList.remove('sort-btn-active'));
-          btn.classList.add('sort-btn-active');
-          sortArticles(order);
-        });
+      const pillLabel = document.querySelector('.pill-label');
+      if (pillLabel) pillLabel.textContent = t.sort_label;
+
+      const sortBtns = document.querySelectorAll('.sort-btn');
+      if (sortBtns.length >= 2) {
+        sortBtns[0].textContent = t.sort_newest;
+        sortBtns[1].textContent = t.sort_oldest;
+      }
+
+      const aboutH2 = document.querySelector('#about-section h2');
+      if (aboutH2) aboutH2.textContent = t.about_title;
+
+      const cards = document.querySelectorAll('.card');
+      if (cards.length >= 3) {
+        cards[0].querySelector('h3').textContent = t.card1_title;
+        cards[0].querySelector('p').textContent = t.card1_text;
+        cards[1].querySelector('h3').textContent = t.card2_title;
+        cards[1].querySelector('p').textContent = t.card2_text;
+        cards[2].querySelector('h3').textContent = t.card3_title;
+        cards[2].querySelector('p').textContent = t.card3_text;
+      }
+
+      const linksH2 = document.querySelector('#links-section h2');
+      if (linksH2) linksH2.textContent = t.links_title;
+
+      const footer = document.querySelector('footer');
+      if (footer) footer.textContent = t.footer;
+
+      // Update Viewer Placeholder (only if empty or showing placeholder)
+      if (!location.hash && viewer) {
+        viewer.innerHTML = `<p style="color:#9ea2a8; text-align:center;">${t.viewer_placeholder}</p>`;
+      }
+
+      renderArticleList();
+    }
+
+    function renderArticleList() {
+      if (!articleList) return;
+      articleList.innerHTML = '';
+      const sortedArticles = [...articles].sort((a, b) => {
+        const da = new Date(a.date);
+        const db = new Date(b.date);
+        return currentSort === 'asc' ? da - db : db - da;
       });
-    })();
+
+      sortedArticles.forEach(article => {
+        const meta = article[currentLang] || article.en; // Fallback to EN if translation missing
+        const li = document.createElement('li');
+        li.dataset.date = article.date;
+        li.innerHTML = `
+          <a href="#${article.id}" style="color:inherit; text-decoration:none;">
+            <strong>${meta.title}</strong><br/>
+            <span class="pill">${meta.tags}</span>
+          </a>
+        `;
+        articleList.appendChild(li);
+      });
+    }
+
+    async function loadArticleFromHash() {
+      const hash = location.hash.replace('#', '');
+      if (!hash) return;
+
+      const article = articles.find(a => a.id === hash);
+      const t = translations[currentLang];
+
+      if (!article) {
+        if (viewer) viewer.innerHTML = `<p style="color:#9ea2a8; text-align:center;">${t.viewer_placeholder}</p>`;
+        return;
+      }
+
+      // Determine file path: posts/id.ua.md or posts/id.md
+      // Note: Original files didn't strictly follow id.md naming (e.g. part1_ansible_ssh -> part1.ansible_ssh.md)
+      // We need a mapping or strict convention. Let's use a mapping for legacy, convention for new.
+
+      const legacyMap = {
+        "why-i-write": "posts/why-i-write.md",
+        "linux_vs_freebsd": "posts/linux_vs_freebsd.md",
+        "text_with_vi": "posts/text_with_vi.md",
+        "networking-foundations-ipv4-ipv6-linux-freebsd": "posts/networking-foundations-ipv4-ipv6-linux-freebsd.md",
+        "firewall": "posts/firewall.md",
+        "cloud-firewalls": "posts/cloud_firewalls.md",
+        "iac": "posts/iac.md",
+        "part1_ansible_ssh": "posts/part1.ansible_ssh.md",
+        "part2_ansible_ssh": "posts/part2.ansible_ssh.md",
+        "advancedvim": "posts/advancedvim.md",
+        "before-containers": "posts/before-containers.md"
+      };
+
+      let file = legacyMap[hash];
+      if (currentLang === 'ua') {
+        if (file) {
+          file = file.replace('.md', '.ua.md');
+        }
+      }
+
+      if (viewer) viewer.innerHTML = `<p style="color:#9ea2a8; text-align:center;">${t.loading} <code>${file}</code>...</p>`;
+
+      try {
+        const res = await fetch(file);
+        if (!res.ok) throw new Error(res.statusText);
+        const md = await res.text();
+        const html = marked.parse(md);
+        if (viewer) {
+          viewer.innerHTML = `
+            <div style="text-align:right; margin-bottom:1rem;">
+              <a href="/" style="color:#00ffd1; text-decoration:none;">${t.back}</a>
+            </div>
+            ${html}
+          `;
+          window.scrollTo({ top: viewer.offsetTop - 40, behavior: 'smooth' });
+        }
+      } catch (e) {
+        // Fallback to EN if UA fails
+        if (currentLang === 'ua') {
+          try {
+            const enFile = legacyMap[hash];
+            const res = await fetch(enFile);
+            if (!res.ok) throw new Error("EN fallback failed");
+            const md = await res.text();
+            const html = marked.parse(md);
+            if (viewer) {
+              viewer.innerHTML = `
+                    <div style="text-align:right; margin-bottom:1rem;">
+                      <p style="color:var(--muted); font-size:0.8rem; margin-bottom:0.5rem;">(UA translation not available yet / Переклад ще не доступний)</p>
+                      <a href="/" style="color:#00ffd1; text-decoration:none;">${t.back}</a>
+                    </div>
+                    ${html}
+                  `;
+            }
+            return;
+          } catch (ex) { }
+        }
+        if (viewer) viewer.innerHTML = `<p style="color:red; text-align:center;">${t.load_fail} ${file}</p>`;
+      }
+    }
+
+    // --- Event Listeners ---
+    if (langBtn) langBtn.addEventListener('click', toggleLanguage);
+
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentSort = btn.dataset.sort;
+        document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('sort-btn-active'));
+        btn.classList.add('sort-btn-active');
+        renderArticleList();
+      });
+    });
+
+    window.addEventListener('hashchange', loadArticleFromHash);
+
+    // Init
+    renderPage();
+    if (location.hash) loadArticleFromHash();
+
   </script>
 </body>
 
