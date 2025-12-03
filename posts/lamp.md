@@ -51,6 +51,7 @@ sudo apt install apache2 mysql-server php libapache2-mod-php php-mysql
 FreeBSD offers a similar experience with its binary package manager. It is fast, clean, and reliable.
 
 ```bash
+sudo pkg update
 sudo pkg install apache24 mysql80-server php82 mod_php82
 ```
 
@@ -100,6 +101,8 @@ Linux follows the "Unix Philosophy" of small tools chained together. To get flex
 
 **Why this matters:**
 If your database grows too large, you don't need to buy a bigger drive and copy everything. You simply plug in a new drive, add it to the Volume Group, and extend the Logical Volume on the fly.
+
+> We used to slice disks using LVM for virtual servers. But later we switched to ZFS
 
 #### FreeBSD: The Integrated Approach (ZFS)
 
