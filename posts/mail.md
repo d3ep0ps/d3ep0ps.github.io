@@ -3,7 +3,7 @@
 > **Sending email is easy. Getting it delivered is a war.**
 
 > [!IMPORTANT]
-> **Mission Briefing**
+> 
 > Open your terminal now. Do not just read this article. You are not here to copy-paste config files; you are here to build a communication infrastructure from scratch.
 > Only proceed if you are ready to troubleshoot, debug, and understand every single line you type.
 
