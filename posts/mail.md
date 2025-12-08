@@ -28,7 +28,7 @@ Today, we are going to build a carrier-grade mail stack on our Linux and FreeBSD
 
 Before we install anything, we need a mental model. Most people confuse SMTP, IMAP, and POP3. Here is how they actually fit together.
 
-1.  **The MTA (Postfix):** Think of Postfix as the **Truck Driver**. Its job is to move mail from Server A to Server B using **SMTP** (Simple Mail Transfer Protocol, Port 25). It doesn't care what's inside the envelope. It doesn't store mail for users to read. It just drives.
+1.  **The MTA (Postfix):** Think of Postfix as the **Truck Driver**. Its job is to move mail from Server A to Server B using **SMTP** (Simple Mail Transfer Protocol, Port 25). It also handles secure submission from users via **Port 587 (TLS)**. It doesn't care what's inside the envelope. It doesn't store mail for users to read. It just drives.
 2.  **The MDA (Dovecot):** Think of Dovecot as the **Warehouse Manager**. When the truck (Postfix) arrives, it hands the mail to Dovecot (via **LMTP**). Dovecot sorts it into shelves (files on disk) and lets users walk in and check their boxes using **IMAP** (Port 143/993).
 3.  **The Database (MySQL):** We are **not** going to use Linux system accounts (`useradd vitaliy`). That doesn't scale. We will store domains, mailboxes, and aliases in MySQL. This is **Virtual Hosting**.
 4.  **The Interface:**
@@ -78,7 +78,7 @@ pkg install postfix postfix-mysql dovecot dovecot-mysql mysql80-server postfixad
 ```
 
 **The "Right" Way (Ports):**
-Here is a trap I have seen many times: pre-built binary packages sometimes lag behind or don't support the newest database versions (like MySQL 8.4). Or worse, a routine `pkg upgrade` replaces your custom binary with a generic one, breaking your mail server at 3 a.m.
+Here is a trap I have seen many times: pre-built binary packages are generic. They often lack specific compile-time options or suffer from library mismatches. For example, I have experienced critical failures where the binary `postfix-mysql-3.10.4` package could not talk to `mysql84-server`  due to client library version conflicts. Relying on `pkg` here is a gamble.
 
 To guarantee stability, we compile from **Ports** and **Lock** the package.
 
@@ -127,6 +127,28 @@ This allows us to host `ceo@company-a.com` and `support@company-b.com` on the sa
 4.  Run the setup wizard in your browser (`http://your-ip/postfixadmin/setup.php`).
 
 Now, instead of `useradd`, you log into a web UI and click "Add Mailbox."
+
+-----
+
+## 4.1 The System User (The Owner of the Files)
+
+We need a single user on the OS to own all the mail files. Postfix and Dovecot will "become" this user when reading/writing to the disk.
+
+**Linux:**
+```bash
+groupadd -g 5000 vmail
+useradd -g vmail -u 5000 vmail -d /var/vmail -s /usr/sbin/nologin
+mkdir -p /var/vmail
+chown -R vmail:vmail /var/vmail
+```
+
+**FreeBSD:**
+```bash
+pw groupadd vmail -g 5000
+pw useradd vmail -u 5000 -g vmail -d /var/vmail -s /usr/sbin/nologin
+mkdir -p /var/vmail
+chown -R vmail:vmail /var/vmail
+```
 
 -----
 
