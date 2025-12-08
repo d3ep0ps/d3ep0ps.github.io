@@ -22,7 +22,7 @@ In my years at ISP and hosting providers, I didn't just run mail servers; I cura
 
 Today, we are going to build a carrier-grade mail stack on our Linux and FreeBSD servers. We are going to do it the "Hosting Provider Way"—not with system users, but with **Virtual Users** in a database, capable of hosting thousands of domains on a single box.
 
------
+
 
 ## 1\. The Architecture: Truck Drivers vs. Warehouse Managers
 
@@ -35,7 +35,7 @@ Before we install anything, we need a mental model. Most people confuse SMTP, IM
       * **PostfixAdmin:** A web panel for us (the admins) to create domains/users in MySQL.
       * **Roundcube:** A webmail client for the users.
 
------
+
 
 ## 2\. The Prerequisites: DNS is Destiny
 
@@ -52,7 +52,7 @@ Go to your DNS Manager (or the BIND server we built in the last article) and ens
       * **STOP.** Do not proceed until you see that return value. If you skip this, everything else will fail.
       * If the answer is "No" (or a generic `ip-1-2-3-4.aws.com`), you are a spammer. Blocked.
 
------
+
 
 ## 3\. Installation: Packages vs. The Architect's Way
 
@@ -112,7 +112,7 @@ sysrc postfix_enable="YES"
 sysrc dovecot_enable="YES"
 ```
 
------
+
 
 ## 4\. The Database: Virtual Users
 
@@ -128,7 +128,7 @@ This allows us to host `ceo@company-a.com` and `support@company-b.com` on the sa
 
 Now, instead of `useradd`, you log into a web UI and click "Add Mailbox."
 
------
+
 
 ## 4.1 The System User (The Owner of the Files)
 
@@ -150,7 +150,7 @@ mkdir -p /var/vmail
 chown -R vmail:vmail /var/vmail
 ```
 
------
+
 
 ## 5\. Configuration: Postfix (The Transporter)
 
@@ -178,7 +178,7 @@ smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_
 
 **[Personal Note]:** Back in the ISP days, "Open Relays" were the plague. If you messed up `smtpd_relay_restrictions`, spammers would find you in minutes and pump millions of emails through your server. Your IP reputation would be burned for years.
 
------
+
 
 ## 6. Configuration: Postfix Master (The Ports)
 
@@ -202,7 +202,7 @@ submission inet n       -       n       -       -       smtpd
 **Challenge:** Why 587? Why not 25?
 *Answer:* ISPs block port 25 for residential/dynamic IPs to stop spam. Port 587 is the industry standard for *submission* (authenticated sending). If you try to configure your iPhone to send via port 25, it probably won't work. Use 587.
 
------
+
 
 ## 7. Configuration: Dovecot (The Warehouse)
 
@@ -229,7 +229,7 @@ mail_location = maildir:/var/vmail/%d/%n
 
 We configure Dovecot to talk to the same MySQL database Postfix uses. Once verified, Dovecot gives Postfix the "thumbs up" to accept the email (this is SASL).
 
------
+
 
 ## 8. The War on Spam: The Holy Trinity
 
@@ -255,7 +255,7 @@ A policy that tells Google/Yahoo what to do if SPF or DKIM fails.
 
 **Pro Tip:** Start with `p=none` (Monitor mode). Run it for a week. If legitimate email isn't breaking, verify your reports, THEN switch to `p=reject` (Enforce mode).
 
------
+
 
 ## 9. The Encryption Layer: TLS and Let's Encrypt
 
@@ -275,7 +275,7 @@ Then we tell Postfix and Dovecot where these keys live.
   * **Postfix:** `smtpd_tls_cert_file` and `smtpd_tls_key_file`.
   * **Dovecot:** `ssl_cert` and `ssl_key`.
 
------
+
 
 ## 10. The Ritual: Testing via Telnet and OpenSSL
 
@@ -353,7 +353,7 @@ You have a working server? Good. Now break it.
 
 **This is the only way you learn.** If you never see a broken state, you won't know what to look for when it breaks at 3 a.m.
 
------
+
 
 ## 11. Operations: Firewall & Logs
 
@@ -376,7 +376,7 @@ If you can't connect, your best friend is the log file.
 
 Read it while you try to connect. It will tell you exactly why you were rejected ("Password mismatch", "Relay access denied", "Connection timed out").
 
------
+
 
 ## Conclusion
 
