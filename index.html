@@ -391,6 +391,12 @@
     // --- Data: Articles ---
     const articles = [
       {
+        id: "mail",
+        date: "2025-12-08",
+        en: { title: "The Mail Stack: Postfix, Dovecot, and the War on Spam", tags: "mail · postfix · dovecot · freebsd · linux" },
+        ua: { title: "Поштовий стек: Postfix, Dovecot і війна зі спамом", tags: "пошта · postfix · dovecot · freebsd · linux" }
+      },
+      {
         id: "bind",
         date: "2025-12-04",
         en: { title: "The Bootstrap Paradox: BIND, Glue Records, and the Registry", tags: "dns · bind · freebsd · linux · foundations" },
@@ -660,7 +666,8 @@
         "advancedvim": "posts/advancedvim.md",
         "before-containers": "posts/before-containers.md",
         "lamp": "posts/lamp.md",
-        "bind": "posts/bind.md"
+        "bind": "posts/bind.md",
+        "mail": "posts/mail.md"
       };
 
       let file = legacyMap[hash];
