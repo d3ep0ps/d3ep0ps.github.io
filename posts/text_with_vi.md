@@ -13,7 +13,7 @@ Now that you’ve installed your first system, logged into the terminal, and sta
 No GUI, no mouse — just you and the keyboard.
 That’s where your real control begins.
 
----
+
 
 ## Why Learning `vi` Matters
 There’s a moment every engineer faces:
@@ -28,7 +28,7 @@ Many people panic at this point — but you don’t have to. Because once you le
 
 **`vi` is the editor that’s always there when you need it most.**
 
----
+
 
 ## Getting Your Bearings: Moving Inside `vi`
 Before typing a single word, learn how to move — because in `vi`, **movement is power**. You don’t scroll with a mouse; you navigate with precision using just four keys.
@@ -53,7 +53,7 @@ You’ve just mastered the first superpower: **intentional movement**.
 
 > 💡 **Tip:** In `vi`, every motion can be combined with an action — for example, `d$` deletes from your cursor to the end of the line. That’s why learning movement early pays off forever.
 
----
+
 
 ## The Real-World Power of `vi`
 Let’s be clear — this isn’t about nostalgia or being “old-school.”

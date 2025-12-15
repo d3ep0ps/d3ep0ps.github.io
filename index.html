@@ -391,6 +391,12 @@
     // --- Data: Articles ---
     const articles = [
       {
+        id: "vps",
+        date: "2025-12-15",
+        en: { title: "Separation of Concerns: From the Monolith to Jails, Zones, and Virtualization", tags: "vps · jails · zones · containers · history" },
+        ua: { title: "Розділення відповідальності: Від моноліта до Jails, Zones та віртуалізації", tags: "vps · jails · zones · containers · історія" }
+      },
+      {
         id: "mail",
         date: "2025-12-08",
         en: { title: "The Mail Stack: Postfix, Dovecot, and the War on Spam", tags: "mail · postfix · dovecot · freebsd · linux" },
@@ -667,7 +673,8 @@
         "before-containers": "posts/before-containers.md",
         "lamp": "posts/lamp.md",
         "bind": "posts/bind.md",
-        "mail": "posts/mail.md"
+        "mail": "posts/mail.md",
+        "vps": "posts/vps.md"
       };
 
       let file = legacyMap[hash];
