@@ -1,4 +1,6 @@
-# Dismantling the Monolith: The AKF Scale Cube and the Art of Decoupling> **"Scale is not just about size. It is about independence."**
+# Dismantling the Monolith: The AKF Scale Cube and the Art of Decoupling:
+
+> **"Scale is not just about size. It is about independence."**
 
 In our previous articles, we built a robust server. It runs Apache, MySQL, Postfix, Dovecot, and BIND. It is secure, hardened, and functional.
 
