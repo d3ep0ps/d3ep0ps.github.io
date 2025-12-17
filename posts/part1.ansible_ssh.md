@@ -118,7 +118,7 @@ admin_ssh_pub_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
     name: "{{ admin_user }}"
     # On Linux, 'sudo' group usually grants admin rights.
     # On FreeBSD, you typically add users to the 'wheel' group.
-    groups: "{{ 'wheel' if ansible_os_family == 'FreeBSD' else 'sudo' }}"
+    groups: "{{ 'wheel' if ansible_facts['os_family'] == 'FreeBSD' else 'sudo' }}"
     shell: /bin/sh
     append: yes
     state: present
