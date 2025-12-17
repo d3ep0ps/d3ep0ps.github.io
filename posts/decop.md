@@ -1,4 +1,4 @@
-# Dismantling the Monolith: The AKF Scale Cube and the Art of Decoupling:
+# Dismantling the Monolith: The AKF Scale Cube and the Art of Decoupling
 
 > **"Scale is not just about size. It is about independence."**
 
