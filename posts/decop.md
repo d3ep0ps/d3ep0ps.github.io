@@ -122,11 +122,12 @@ Each container will have its own IP, its own resource limits (Cgroups/RCTL), and
 
 ## Conclusion
 
-We are done building "pet servers."
-We are now building **Systems**.
+We are done building "pet servers."We are now building **Systems**.
 
 Understanding the AKF Cube moves you from being a System Administrator (who fixes servers) to a System Architect (who designs scalability).
 
-In the next article, we stop drawing diagrams and start typing commands. We will implement this **Y-Axis Split** using **FreeBSD Jails** and **Linux Containers**, turning our single server into a micro-datacenter.
+**But an architect who cannot build is just a philosopher.**
+
+In the next article, we start typing commands. We will implement this **Y-Axis Split** using **FreeBSD Jails** and **Linux Containers**, turning our single server into a micro-datacenter.
 
 **Next Up: "Caging the Beast: Implementing Jails and Containers."**
