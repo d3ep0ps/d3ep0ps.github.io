@@ -18,7 +18,7 @@ To understand how to break this monolith apart efficiently, we need a map. That 
 
 ## 1. The Theory: The AKF Scale Cube
 
-Developed by Abbott and Fisher in the book (*The Art of Scalability*)[https://www.amazon.com/Art-Scalability-Architecture-Organizations-Enterprise/dp/0134032802], the AKF Cube is a three-dimensional model for scaling systems. It defines three distinct ways to handle growth.
+Developed by Abbott and Fisher in the book [*The Art of Scalability*](https://www.amazon.com/Art-Scalability-Architecture-Organizations-Enterprise/dp/0134032802), the AKF Cube is a three-dimensional model for scaling systems. It defines three distinct ways to handle growth.
 
 P.S. I believe we can come up with many more dimensions/vectors for scaling systems, but for better understanding, we will use only three.
 
