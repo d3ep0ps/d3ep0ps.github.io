@@ -391,6 +391,12 @@
     // --- Data: Articles ---
     const articles = [
       {
+        id: "decop",
+        date: "2025-12-17",
+        en: { title: "Dismantling the Monolith: The AKF Scale Cube and the Art of Decoupling", tags: "scaling · architecture · containers · theory" },
+        ua: { title: "Розбиваємо Моноліт: Куб Масштабування AKF та Мистецтво Декомпозиції", tags: "масштабування · архітектура · контейнери · теорія" }
+      },
+      {
         id: "vps",
         date: "2025-12-15",
         en: { title: "Separation of Concerns: From the Monolith to Jails, Zones, and Virtualization", tags: "vps · jails · zones · containers · history" },
@@ -660,6 +666,7 @@
       // We need a mapping or strict convention. Let's use a mapping for legacy, convention for new.
 
       const legacyMap = {
+        "decop": "posts/decop.md",
         "why-i-write": "posts/why-i-write.md",
         "linux_vs_freebsd": "posts/linux_vs_freebsd.md",
         "text_with_vi": "posts/text_with_vi.md",
