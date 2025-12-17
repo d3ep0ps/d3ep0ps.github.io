@@ -1,4 +1,4 @@
-# Dismantling the Monolith: The AKF Scale Cube and the Art of Decoupling:
+# Dismantling the Monolith: The AKF Scale Cube and the Art of Decoupling
 
 > **"Scale is not just about size. It is about independence."**
 
@@ -119,6 +119,8 @@ We are going to refactor our Monolith into a Y-Axis scaled system.
 * `Container C`: **Communication Service** (Postfix + Dovecot). Scaled for Storage.
 
 Each container will have its own IP, its own resource limits (Cgroups/RCTL), and its own security boundary.
+
+
 
 ## Conclusion
 
