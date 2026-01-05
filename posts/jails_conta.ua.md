@@ -143,6 +143,7 @@ sudo debootstrap --variant=minbase stable /var/lib/containers/web01 http://deb.d
 sudo unshare --fork --pid --mount --net chroot /var/lib/containers/web01 /bin/bash
 
 ```
+Це створю ізоляцію, але без cgroups або правильного init — це навчальний приклад.
 
 Ця команда `debootstrap` є Linux-еквівалентом розпакування `base.txz`. Вона стягує `apt`, `bash` та `coreutils`, щоб створити робоче середовище.
 
@@ -239,8 +240,8 @@ lxc config device add db01 mysqldata disk source=/data/mysql path=/var/lib/mysql
 
 Ми успішно посадили звіра в клітку.
 
-* **Apache** працює в Jail.
-* **MySQL** працює в Контейнері.
+* **Apache** працює в FreeBSD Jail.
+* **MySQL** працює в Linux Container.
 * **Мережа** використовує віртуальні мости та NAT.
 * **Зберігання** використовує bind mounts (та клони ZFS) для збереження.
 

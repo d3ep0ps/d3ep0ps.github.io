@@ -157,6 +157,7 @@ sudo debootstrap --variant=minbase stable /var/lib/containers/web01 http://deb.d
 sudo unshare --fork --pid --mount --net chroot /var/lib/containers/web01 /bin/bash
 
 ```
+This creates isolation, but without cgroups or proper init — it’s educational, not production-ready.
 
 This command `debootstrap` is the Linux equivalent of extracting `base.txz`. It pulls down `apt`, `bash`, and `coreutils` to create a working environment.
 
@@ -259,8 +260,8 @@ Now, the "brain" (MySQL) is in the cage, but the "memory" (Data) sits safely on 
 
 We have successfully caged the beast.
 
-* **Apache** is running in a Jail.
-* **MySQL** is running in a Container.
+* **Apache** is running in a FreeBSD Jail.
+* **MySQL** is running in a Linux Container.
 * **Networking** uses virtual bridges and NAT.
 * **Storage** uses bind mounts (and ZFS clones) for persistence.
 
