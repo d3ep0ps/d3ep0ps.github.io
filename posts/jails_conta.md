@@ -66,7 +66,6 @@ zfs clone zroot/jails/base-13.2@gold zroot/jails/web01
 
 **Why this matters to an Architect:**
 
-* 
 **Speed:** The clone is created in milliseconds.
 
 
@@ -134,12 +133,10 @@ Unlike FreeBSD, "Containers" do not exist in the Linux kernel. There is no syste
 
 Instead, we use two separate technologies glued together:
 
-1. 
-**Namespaces:** Isolate *visibility* (What I can see).
+1. **Namespaces:** Isolate *visibility* (What I can see).
 
 
-2. 
-**Cgroups:** Isolate *resources* (What I can use).
+2. **Cgroups:** Isolate *resources* (What I can use).
 
 
 
