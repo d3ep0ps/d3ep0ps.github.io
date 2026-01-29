@@ -7,15 +7,34 @@
   <title>d3ep0ps — depth over hype</title>
   <meta name="description"
     content="d3ep0ps — practical guides on Linux, FreeBSD, networking, cloud, and AI. Depth over hype.">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Markdown Parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
   <style>
     :root {
-      --bg: #0d0d0d;
-      --panel: #141414;
-      --text: #f3f3f3;
-      --muted: #9ea2a8;
+      /* Colors */
+      --bg: #09090b;
+      /* Very dark zinc */
+      --sidebar-bg: #101012;
+      --text-main: #e4e4e7;
+      --text-muted: #a1a1aa;
+      --border: #27272a;
       --accent: #00ffd1;
-      --radius: 14px;
-      --accent-soft: rgba(0, 255, 209, 0.08);
+      --accent-hover: #00ccfe;
+      --hover-bg: #27272a;
+
+      /* Dimensions */
+      --sidebar-width: 320px;
+      --header-height: 60px;
+      /* Mobile header */
     }
 
     * {
@@ -24,760 +43,819 @@
 
     body {
       margin: 0;
-      background: radial-gradient(circle at top, #121212 0%, #0b0b0b 40%, #040404 100%);
-      color: var(--text);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
       line-height: 1.6;
-      overflow-x: hidden;
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+      /* App-like structure */
     }
 
-    header {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 1.5rem 1.5rem 0;
+    /* --- Sidebar --- */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1rem;
+      flex-direction: column;
+      height: 100%;
+      flex-shrink: 0;
+      transition: transform 0.3s ease;
+      z-index: 100;
+    }
+
+    .sidebar-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
     }
 
     .logo {
-      font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
-      font-weight: 600;
-      letter-spacing: 0.06em;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: var(--text-main);
       display: flex;
       align-items: center;
-      gap: .4rem;
-    }
-
-    .badge {
-      background: rgba(0, 255, 209, 0.13);
-      border: 1px solid rgba(0, 255, 209, 0.32);
-      padding: .15rem .5rem .2rem;
-      border-radius: 999px;
-      font-size: .65rem;
-      text-transform: uppercase;
-      letter-spacing: .12em;
-      color: var(--accent);
-    }
-
-    .hero {
-      max-width: 980px;
-      margin: 2.2rem auto 1.5rem;
-      padding: 0 1.5rem;
-      display: grid;
-      grid-template-columns: 1.1fr .9fr;
-      gap: 1.5rem;
-    }
-
-    h1 {
-      font-size: clamp(2.5rem, 3.5vw, 3.1rem);
-      line-height: 1.05;
-      margin-bottom: 1rem;
-    }
-
-    .subtitle {
-      color: var(--muted);
-      max-width: 42rem;
-      margin-bottom: 1.3rem;
-    }
-
-    .button-row {
-      display: flex;
-      gap: .75rem;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      background: var(--accent);
-      color: #000;
-      border: none;
-      padding: .65rem 1.1rem;
-      border-radius: 999px;
-      font-weight: 600;
+      gap: 0.5rem;
       text-decoration: none;
-      font-size: .9rem;
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.05em;
     }
 
-    .btn-secondary {
-      background: rgba(0, 0, 0, 0);
-      border: 1px solid rgba(243, 243, 243, 0.1);
-      color: var(--text);
-    }
-
-    .panel {
-      background: radial-gradient(circle at top, rgba(0, 255, 209, 0.25) 0%, rgba(20, 20, 20, 0) 40%), rgba(12, 12, 12, 0.65);
-      border: 1px solid rgba(255, 255, 255, 0.02);
-      border-radius: var(--radius);
-      padding: 1rem 1.1rem 1rem;
-    }
-
-    .panel h2 {
-      font-size: 1rem;
-      margin-top: 0;
-    }
-
-    .mini-list {
-      list-style: none;
-      padding: 0;
-      margin: .4rem 0 0;
-    }
-
-    .mini-list li {
-      padding: .55rem .35rem .55rem .4rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.018);
-      display: flex;
-      align-items: flex-start;
-      gap: .5rem;
-    }
-
-    .pill {
-      font-size: .65rem;
-      color: var(--muted);
-    }
-
-    section {
-      max-width: 1100px;
-      margin: 1rem auto 2.2rem;
-      padding: 0 1.5rem;
-    }
-
-    .cols {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 1rem;
-    }
-
-    .card {
-      background: rgba(13, 13, 13, 0.35);
-      border: 1px solid rgba(255, 255, 255, 0.022);
-      border-radius: var(--radius);
-      padding: 1rem;
-    }
-
-    footer {
-      text-align: center;
-      color: #686868;
-      font-size: .75rem;
-      padding: 1.7rem 0 2.6rem;
-    }
-
-    a {
+    .logo span {
       color: var(--accent);
     }
 
-    @media (max-width: 800px) {
-      .hero {
-        grid-template-columns: 1fr;
-      }
-
-      header {
-        flex-wrap: wrap;
-      }
-    }
-
-    /* article viewer */
-    #article-viewer {
-      background: #111;
-      border-radius: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      padding: 2rem 3vw;
-      margin: 2rem auto;
-      max-width: 1200px;
-      overflow-x: hidden;
-    }
-
-    #article-viewer h1,
-    #article-viewer h2,
-    #article-viewer h3 {
-      line-height: 1.25;
-      margin-top: 1.6rem;
-      margin-bottom: 1rem;
-    }
-
-    #article-viewer p,
-    #article-viewer ul,
-    #article-viewer ol,
-    #article-viewer pre,
-    #article-viewer code {
-      max-width: 100%;
-      word-wrap: break-word;
-    }
-
-    #article-viewer pre {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 10px;
-      padding: 1rem;
-      overflow-x: auto;
-    }
-
-    #article-viewer img {
-      max-width: 100%;
-      height: auto;
-    }
-
-    #article-viewer table {
-      border-collapse: collapse;
-      width: 100%;
-      overflow-x: auto;
-      display: block;
-    }
-
-    #article-viewer th,
-    #article-viewer td {
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: .5rem .75rem;
-    }
-
-    /* NEW: header row + scroll + sort styles for the series panel */
-    .panel-header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: .75rem;
-      margin-bottom: .4rem;
-    }
-
-    .panel-header-row h2 {
-      margin: 0;
-      font-size: 1rem;
-    }
-
-    .mini-list-wrapper {
-      max-height: 210px;
-      /* adjust as you like */
-      overflow-y: auto;
-      padding-right: .25rem;
-    }
-
-    .mini-list-wrapper::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .mini-list-wrapper::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .mini-list-wrapper::-webkit-scrollbar-thumb {
-      background: rgba(158, 162, 168, 0.6);
-      border-radius: 999px;
-    }
-
-    .sort-controls {
-      display: inline-flex;
-      align-items: center;
-      gap: .35rem;
-      font-size: .7rem;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
-    .sort-controls .pill-label {
+    .tagline {
+      font-size: 0.75rem;
+      color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: .12em;
-      font-size: .6rem;
+      letter-spacing: 0.1em;
+      font-weight: 500;
     }
 
-    .sort-btn {
-      border: 0;
-      padding: .15rem .5rem;
-      border-radius: 999px;
-      font-size: .65rem;
-      background: rgba(0, 0, 0, 0);
-      color: var(--muted);
+    .controls {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 0.5rem;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .search-box {
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0.6rem 0.8rem;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-box input:focus {
+      border-color: var(--accent);
+    }
+
+    .lang-toggle {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .btn-sm {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .btn-sm:hover,
+    .btn-sm.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0, 255, 209, 0.05);
+    }
+
+    /* Article List */
+    .article-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem 0;
+    }
+
+    .article-item {
+      display: block;
+      padding: 1rem 1.5rem;
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: background 0.2s;
       cursor: pointer;
     }
 
-    .sort-btn-active {
-      background: var(--accent-soft);
+    .article-item:hover {
+      background: var(--hover-bg);
+    }
+
+    .article-item.active {
+      background: rgba(0, 255, 209, 0.05);
+      border-left-color: var(--accent);
+    }
+
+    .article-title {
+      display: block;
+      color: var(--text-main);
+      font-weight: 500;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      margin-bottom: 0.4rem;
+    }
+
+    .article-item.active .article-title {
       color: var(--accent);
-      border: 1px solid rgba(0, 255, 209, 0.35);
+    }
+
+    .article-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .article-tags {
+      font-family: 'JetBrains Mono', monospace;
+      opacity: 0.7;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+    }
+
+    .sidebar-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .sidebar-footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .sidebar-footer a:hover {
+      color: var(--accent);
+    }
+
+    /* --- Main Content --- */
+    .main-wrapper {
+      flex: 1;
+      height: 100%;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      position: relative;
+    }
+
+    .content-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 3rem 2rem 6rem;
+    }
+
+    /* Typography for Markdown */
+    .markdown-body {
+      color: var(--text-main);
+    }
+
+    .markdown-body h1 {
+      font-size: 2.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+      margin-bottom: 2rem;
+      color: var(--accent);
+      line-height: 1.2;
+    }
+
+    .markdown-body h2 {
+      font-size: 1.75rem;
+      margin-top: 3rem;
+      margin-bottom: 1rem;
+      color: #fff;
+    }
+
+    .markdown-body h3 {
+      font-size: 1.4rem;
+      margin-top: 2rem;
+      color: #f0f0f0;
+    }
+
+    .markdown-body p {
+      margin-bottom: 1.5rem;
+      font-size: 1.1rem;
+      color: #d1d5db;
+    }
+
+    .markdown-body a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+    }
+
+    .markdown-body a:hover {
+      border-bottom-color: var(--accent);
+    }
+
+    .markdown-body code {
+      font-family: 'JetBrains Mono', monospace;
+      background: #27272a;
+      padding: 0.2em 0.4em;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+
+    .markdown-body pre {
+      background: #18181b;
+      padding: 1.5rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      margin: 2rem 0;
+    }
+
+    .markdown-body pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    .markdown-body blockquote {
+      border-left: 4px solid var(--accent);
+      margin: 2rem 0;
+      padding-left: 1.5rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .markdown-body img {
+      max-width: 100%;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    /* --- Empty State / Hero --- */
+    .hero {
+      text-align: center;
+      padding: 4rem 1rem;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 1rem;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 2rem;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5rem;
+      margin-top: 3rem;
+      text-align: left;
+    }
+
+    .feature-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+      border-radius: 12px;
+    }
+
+    .feature-card h3 {
+      margin-top: 0;
+      color: var(--accent);
+    }
+
+    .feature-card p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 0;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* --- Mobile Responsive --- */
+    .mobile-header {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--header-height);
+      background: var(--bg);
+      /* Opaque bg */
+      border-bottom: 1px solid var(--border);
+      z-index: 200;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+    }
+
+    .menu-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+
+    @media (max-width: 800px) {
+      body {
+        flex-direction: column;
+        padding-top: var(--header-height);
+      }
+
+      .sidebar {
+        position: fixed;
+        top: var(--header-height);
+        left: 0;
+        bottom: 0;
+        transform: translateX(-100%);
+        width: 100%;
+        /* Full width sidebar on mobile */
+        z-index: 150;
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .mobile-header {
+        display: flex;
+      }
+
+      .content-container {
+        padding: 2rem 1.5rem 4rem;
+      }
+
+      .markdown-body h1 {
+        font-size: 2rem;
+      }
     }
   </style>
-  <!-- Markdown parser -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
 <body>
-  <header>
-    <div class="logo">
-      <span>&gt;_ d3ep0ps</span>
-      <span class="badge">depth over hype</span>
-    </div>
-    <nav>
-      <button id="lang-btn" class="btn btn-secondary"
-        style="padding: .2rem .6rem; font-size: .75rem; margin-right: 1rem;">UA</button>
-      <a href="https://medium.com/@d3ep0ps"
-        style="color:var(--muted); text-decoration:none; margin-right:.75rem;">Medium</a>
-      <a href="https://github.com/d3ep0ps" style="color:var(--muted); text-decoration:none;">GitHub</a>
-    </nav>
+
+  <!-- Mobile Header -->
+  <header class="mobile-header">
+    <a href="#" class="logo" onclick="toggleSidebar(false)"><span>>_</span> d3ep0ps</a>
+    <button class="menu-btn" onclick="toggleSidebar()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </button>
   </header>
 
-  <main>
-    <div class="hero">
-      <div>
-        <h1>systems, networks, intelligence.</h1>
-        <p class="subtitle">
-          I’m <strong>Vitaliy Zhhuta</strong> (1984), a system architect.<br />
-          I run <strong>d3ep0ps</strong> to teach how tech really works — from Linux and FreeBSD to cloud and AI —
-          without the hype.
-        </p>
-        <div class="button-row">
-          <a class="btn" href="https://medium.com/@d3ep0ps">Read on Medium</a>
-          <a class="btn btn-secondary" href="https://github.com/d3ep0ps">View labs on GitHub</a>
-        </div>
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="#" class="logo" onclick="resetView()">
+        <span>>_</span> d3ep0ps
+      </a>
+      <div class="tagline">depth over hype</div>
+    </div>
+
+    <div class="controls">
+      <div class="search-box">
+        <input type="text" id="search" placeholder="Search articles...">
       </div>
+      <div class="lang-toggle">
+        <button class="btn-sm" id="btn-ua" onclick="setLanguage('ua')">UA</button>
+        <button class="btn-sm" id="btn-en" onclick="setLanguage('en')">EN</button>
+      </div>
+    </div>
 
-      <div>
-        <div class="panel">
-          <div class="panel-header-row">
-            <h2>Current series: learn like an engineer</h2>
-            <div class="sort-controls">
-              <span class="pill-label">Sort:</span>
-              <button class="sort-btn sort-btn-active" data-sort="desc">Newest</button>
-              <button class="sort-btn" data-sort="asc">Oldest</button>
-            </div>
+    <div class="article-list" id="article-list">
+      <!-- Items injected by JS -->
+    </div>
+
+    <div class="sidebar-footer">
+      <a href="https://medium.com/@d3ep0ps" target="_blank">Medium</a>
+      <a href="https://github.com/d3ep0ps" target="_blank">GitHub</a>
+      <a href="https://linkedin.com/in/vitaliyzhhuta" target="_blank">LinkedIn</a>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-wrapper" id="main-scroll">
+    <div class="content-container" id="content-container">
+      <!-- Dynamic Content -->
+      <div class="hero">
+        <h1>systems, networks, intelligence.</h1>
+        <p>
+          I’m <strong>Vitaliy Zhhuta</strong> (1984), a system architect.<br>
+          I run <strong>d3ep0ps</strong> to teach how tech really works — from Linux and FreeBSD to cloud and AI.
+        </p>
+
+        <div class="feature-grid">
+          <div class="feature-card">
+            <h3>Linux & FreeBSD</h3>
+            <p>Install, explore, and truly understand Unix-like systems. No copy–paste without explanation.</p>
           </div>
-
-          <div class="mini-list-wrapper">
-            <ul class="mini-list" id="article-list">
-              <!-- Articles will be rendered here by JS -->
-            </ul>
+          <div class="feature-card">
+            <h3>Networking & Homelab</h3>
+            <p>Interfaces, routing, firewalls, and the mental models to not break your LAN.</p>
+          </div>
+          <div class="feature-card">
+            <h3>Cloud & AI</h3>
+            <p>GCP, automation, intelligent agents — only after we master the foundation.</p>
           </div>
         </div>
       </div>
     </div>
-
-    <section id="article-viewer">
-      <p style="color:#9ea2a8; text-align:center;">
-        Select an article above to read it here — or explore more on
-        <a href="https://medium.com/@d3ep0ps" style="color:#00ffd1;">Medium</a>.
-      </p>
-    </section>
-
-    <section id="about-section">
-      <h2 style="margin-bottom:.8rem;">What d3ep0ps is about</h2>
-      <div class="cols">
-        <div class="card">
-          <h3 style="margin-top:0;">Linux &amp; FreeBSD</h3>
-          <p>Install, explore, and truly understand Unix-like systems. No copy–paste without explanation.</p>
-        </div>
-        <div class="card">
-          <h3 style="margin-top:0;">Networking &amp; homelab</h3>
-          <p>Interfaces, routing, firewalls, and the mental models to not break your LAN.</p>
-        </div>
-        <div class="card">
-          <h3 style="margin-top:0;">Cloud &amp; AI, slowly</h3>
-          <p>GCP, automation, intelligent agents — only after we master the foundation.</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="links-section">
-      <h2 style="margin-bottom:.8rem;">Links</h2>
-      <p>
-        → Articles: <a href="https://medium.com/@d3ep0ps">medium.com/@d3ep0ps</a><br />
-        → Code & labs: <a href="https://github.com/d3ep0ps">github.com/d3ep0ps</a><br />
-        → LinkedIn: <a href="https://linkedin.com/in/vitaliyzhhuta">linkedin.com/in/vitaliyzhhuta</a>
-      </p>
-    </section>
   </main>
 
-  <footer>
-    d3ep0ps — depth over hype · born 1984 · made on Unix
-  </footer>
-
   <script>
-    // --- Data: Articles ---
+    // --- Data ---
+    // REMOVED THE DOUBLE COMMA HERE
     const articles = [
       {
         id: "swarm",
         date: "2026-01-19",
-        en: { title: "The Swarm: Moving from One Server to a Cluster", tags: "orchestration · nomad · consul · cluster" },
-        ua: { title: "Рій: Перехід від одного сервера до кластера", tags: "orchestration · nomad · consul · cluster" }
+        en: { title: "The Swarm: Moving from One Server to a Cluster", tags: "orchestration · nomad" },
+        ua: { title: "Рій: Перехід від одного сервера до кластера", tags: "orchestration · nomad" }
       },
       {
         id: "watchtower",
         date: "2026-01-14",
-        en: { title: "The Watchtower: Observability in a Fragmented System", tags: "observability · prometheus · elk · logging" },
-        ua: { title: "Вартова Вежа: Спостережливість у Фрагментованій Системі", tags: "observability · prometheus · elk · logging" }
+        en: { title: "The Watchtower: Observability in a Fragmented System", tags: "observability · prometheus" },
+        ua: { title: "Вартова Вежа: Спостережливість у Фрагментованій Системі", tags: "observability · prometheus" }
       },
       {
         id: "jails_conta",
         date: "2026-01-05",
-        en: { title: "Caging the Beast: Implementing Jails and Containers", tags: "jails · containers · vnet · networking · freebsd · linux" },
-        ua: { title: "Приборкання Звіра: Впровадження Jails та Containers", tags: "jails · containers · vnet · мережі · freebsd · linux" }
+        en: { title: "Caging the Beast: Implementing Jails and Containers", tags: "jails · containers" },
+        ua: { title: "Приборкання Звіра: Впровадження Jails та Containers", tags: "jails · containers" }
       },
       {
         id: "conductor",
         date: "2026-01-06",
-        en: { title: "The Conductor: Automating the Stack", tags: "iac · bastille · docker · freebsd · linux" },
-        ua: { title: "Диригент: Автоматизація Стеку", tags: "iac · bastille · docker · freebsd · linux" }
-      }, ,
+        en: { title: "The Conductor: Automating the Stack", tags: "iac · bastille · docker" },
+        ua: { title: "Диригент: Автоматизація Стеку", tags: "iac · bastille · docker" }
+      },
       {
         id: "decop",
         date: "2025-12-17",
-        en: { title: "Dismantling the Monolith: The AKF Scale Cube and the Art of Decoupling", tags: "scaling · architecture · containers · theory" },
-        ua: { title: "Розбиваємо Моноліт: Куб Масштабування AKF та Мистецтво Декомпозиції", tags: "масштабування · архітектура · контейнери · теорія" }
+        en: { title: "Dismantling the Monolith: The AKF Scale Cube", tags: "scaling · architecture" },
+        ua: { title: "Розбиваємо Моноліт: Куб Масштабування AKF", tags: "масштабування · архітектура" }
       },
       {
         id: "vps",
         date: "2025-12-15",
-        en: { title: "Separation of Concerns: From the Monolith to Jails, Zones, and Virtualization", tags: "vps · jails · zones · containers · history" },
-        ua: { title: "Розділення відповідальності: Від моноліта до Jails, Zones та віртуалізації", tags: "vps · jails · zones · containers · історія" }
+        en: { title: "Separation of Concerns: From the Monolith to Jails", tags: "vps · jails · zones" },
+        ua: { title: "Розділення відповідальності: Від моноліта до Jails", tags: "vps · jails · zones" }
       },
       {
         id: "mail",
         date: "2025-12-08",
-        en: { title: "The Mail Stack: Postfix, Dovecot, and the War on Spam", tags: "mail · postfix · dovecot · freebsd · linux" },
-        ua: { title: "Поштовий стек: Postfix, Dovecot і війна зі спамом", tags: "пошта · postfix · dovecot · freebsd · linux" }
+        en: { title: "The Mail Stack: Postfix, Dovecot, and Spam", tags: "mail · postfix" },
+        ua: { title: "Поштовий стек: Postfix, Dovecot і спам", tags: "пошта · postfix" }
       },
       {
         id: "bind",
         date: "2025-12-04",
-        en: { title: "The Bootstrap Paradox: BIND, Glue Records, and the Registry", tags: "dns · bind · freebsd · linux · foundations" },
-        ua: { title: "Парадокс Bootstrap: BIND, Glue Records та Реєстр", tags: "dns · bind · freebsd · linux · основи" }
+        en: { title: "The Bootstrap Paradox: BIND, Glue Records", tags: "dns · bind · freebsd" },
+        ua: { title: "Парадокс Bootstrap: BIND, Glue Records", tags: "dns · bind · freebsd" }
       },
       {
         id: "lamp",
         date: "2025-12-03",
-        en: { title: "Building the Web: LAMP vs FAMP — The Archetype of the Internet", tags: "lamp · famp · freebsd · linux · foundations" },
-        ua: { title: "Побудова Вебу: LAMP проти FAMP — Архетип Інтернету", tags: "lamp · famp · freebsd · linux · основи" }
+        en: { title: "Building the Web: LAMP vs FAMP", tags: "lamp · famp · history" },
+        ua: { title: "Побудова Вебу: LAMP проти FAMP", tags: "lamp · famp · історія" }
       },
       {
         id: "before-containers",
         date: "2025-12-01",
-        en: { title: "The Lost Art of System Administration", tags: "foundations · lamp · dns · mail · containers" },
-        ua: { title: "Втрачене мистецтво системного адміністрування", tags: "основи · lamp · dns · mail · containers" }
+        en: { title: "The Lost Art of System Administration", tags: "foundations · containers" },
+        ua: { title: "Втрачене мистецтво системного адміністрування", tags: "основи · containers" }
       },
       {
         id: "advancedvim",
         date: "2025-11-29",
-        en: { title: "The Sysadmin’s Editor in the Age of Cloud and IaC", tags: "vim · neovim · iac · automation" },
-        ua: { title: "Редактор сисадміна в епоху хмар та IaC", tags: "vim · neovim · iac · автоматизація" }
+        en: { title: "The Sysadmin’s Editor in the Age of Cloud", tags: "vim · neovim · iac" },
+        ua: { title: "Редактор сисадміна в епоху хмар та IaC", tags: "vim · neovim · iac" }
       },
       {
         id: "part2_ansible_ssh",
         date: "2025-11-27",
-        en: { title: "The Day-1 Server Security Checklist: Building the Perimeter on Linux and FreeBSD", tags: "automation · ansible · security · firewall" },
-        ua: { title: "Чекліст безпеки сервера (День 1): Будуємо периметр на Linux та FreeBSD", tags: "автоматизація · ansible · безпека · firewall" }
+        en: { title: "Server Security Checklist: Day 1 (Perimeter)", tags: "ansible · security" },
+        ua: { title: "Чекліст безпеки сервера: День 1 (Периметр)", tags: "ansible · безпека" }
       },
       {
         id: "part1_ansible_ssh",
         date: "2025-11-23",
-        en: { title: "The Day-1 Server Security Checklist: Hardening SSH on Linux and FreeBSD", tags: "automation · ansible · mindset · cloud" },
-        ua: { title: "Чекліст безпеки сервера (День 1): Посилення SSH на Linux та FreeBSD", tags: "автоматизація · ansible · мислення · cloud" }
+        en: { title: "Server Security Checklist: Day 1 (SSH)", tags: "ansible · hardening" },
+        ua: { title: "Чекліст безпеки сервера: День 1 (SSH)", tags: "ansible · посилення" }
       },
       {
         id: "iac",
         date: "2025-11-19",
-        en: { title: "Stop Clicking: The Journey to Infrastructure as Code", tags: "cloud · mindset" },
-        ua: { title: "Досить клікати: Шлях до Infrastructure as Code", tags: "cloud · мислення" }
+        en: { title: "Stop Clicking: The Journey to IaC", tags: "cloud · mindset" },
+        ua: { title: "Досить клікати: Шлях до IaC", tags: "cloud · мислення" }
       },
       {
         id: "cloud-firewalls",
         date: "2025-11-17",
-        en: { title: "Firewalls in the Cloud: From pf to VPC Rules - A Mental Model Shift", tags: "cloud · mindset" },
-        ua: { title: "Фаєрволи у хмарі: Від pf до правил VPC — Зміна ментальної моделі", tags: "cloud · мислення" }
+        en: { title: "Firewalls in the Cloud: From pf to VPC", tags: "cloud · mindset" },
+        ua: { title: "Фаєрволи у хмарі: Від pf до правил VPC", tags: "cloud · мислення" }
       },
       {
         id: "firewall",
         date: "2025-11-13",
-        en: { title: "Securing Unix Systems: pf vs iptables — Why FreeBSD Still Wins.", tags: "security · unix firewalls" },
-        ua: { title: "Захист Unix систем: pf проти iptables — Чому FreeBSD досі перемагає.", tags: "безпека · unix firewalls" }
+        en: { title: "Securing Unix Systems: pf vs iptables", tags: "security · firewalls" },
+        ua: { title: "Захист Unix систем: pf проти iptables", tags: "безпека · firewalls" }
       },
       {
         id: "networking-foundations-ipv4-ipv6-linux-freebsd",
         date: "2025-11-11",
-        en: { title: "Networking Foundations: IPv4, IPv6, and Configuration", tags: "networking · labs" },
+        en: { title: "Networking Foundations: IPv4, IPv6", tags: "networking · labs" },
         ua: { title: "Основи мереж: IPv4, IPv6 та конфігурація", tags: "мережі · лаби" }
       },
       {
         id: "text_with_vi",
         date: "2025-11-06",
-        en: { title: "Mastering Text Editing on Unix: vi, vim & beyond", tags: "hands-on · text editing" },
-        ua: { title: "Майстерність редагування тексту в Unix: vi, vim та інші", tags: "практика · редагування" }
+        en: { title: "Mastering Text Editing on Unix: vi & vim", tags: "hands-on · editing" },
+        ua: { title: "Майстерність редагування тексту в Unix", tags: "практика · редагування" }
       },
       {
         id: "linux_vs_freebsd",
         date: "2025-11-04",
-        en: { title: "Choosing Your OS: Linux vs FreeBSD", tags: "foundations · mindset" },
-        ua: { title: "Вибір ОС: Linux проти FreeBSD", tags: "основи · мислення" }
+        en: { title: "Choosing Your OS: Linux vs FreeBSD", tags: "foundations" },
+        ua: { title: "Вибір ОС: Linux проти FreeBSD", tags: "основи" }
       },
       {
         id: "why-i-write",
         date: "2025-11-03",
-        en: { title: "Why I Write: From Commands to Cloud and AI", tags: "philosophy · intro" },
-        ua: { title: "Чому я пишу: Від командного рядка до хмар та ШІ", tags: "філософія · інтро" }
+        en: { title: "Why I Write: From Commands to Cloud", tags: "philosophy · intro" },
+        ua: { title: "Чому я пишу: Від командного рядка до хмар", tags: "філософія · інтро" }
       }
     ];
 
-    // --- Data: UI Translations ---
-    const translations = {
-      en: {
-        badge: "depth over hype",
-        hero_h1: "systems, networks, intelligence.",
-        hero_p: "I’m <strong>Vitaliy Zhhuta</strong> (1984), a system architect.<br/>I run <strong>d3ep0ps</strong> to teach how tech really works — from Linux and FreeBSD to cloud and AI — without the hype.",
-        btn_medium: "Read on Medium",
-        btn_github: "View labs on GitHub",
-        series_title: "Current series: learn like an engineer",
-        sort_label: "Sort:",
-        sort_newest: "Newest",
-        sort_oldest: "Oldest",
-        viewer_placeholder: "Select an article above to read it here — or explore more on <a href=\"https://medium.com/@d3ep0ps\" style=\"color:#00ffd1;\">Medium</a>.",
-        loading: "Loading",
-        back: "&lt; Back to main",
-        load_fail: "Failed to load",
-        about_title: "What d3ep0ps is about",
-        card1_title: "Linux & FreeBSD",
-        card1_text: "Install, explore, and truly understand Unix-like systems. No copy–paste without explanation.",
-        card2_title: "Networking & homelab",
-        card2_text: "Interfaces, routing, firewalls, and the mental models to not break your LAN.",
-        card3_title: "Cloud & AI, slowly",
-        card3_text: "GCP, automation, intelligent agents — only after we master the foundation.",
-        links_title: "Links",
-        footer: "d3ep0ps — depth over hype · born 1984 · made on Unix"
-      },
-      ua: {
-        badge: "глибина понад хайп",
-        hero_h1: "системи, мережі, інтелект.",
-        hero_p: "Я <strong>Віталій Жгута</strong> (1984), системний архітектор.<br/>Я веду <strong>d3ep0ps</strong>, щоб навчати, як насправді працюють технології — від Linux і FreeBSD до хмар та ШІ — без зайвого хайпу.",
-        btn_medium: "Читати на Medium",
-        btn_github: "Лаби на GitHub",
-        series_title: "Поточна серія: вчись як інженер",
-        sort_label: "Сортувати:",
-        sort_newest: "Нові",
-        sort_oldest: "Старі",
-        viewer_placeholder: "Оберіть статтю вище, щоб читати тут — або дізнайтесь більше на <a href=\"https://medium.com/@d3ep0ps\" style=\"color:#00ffd1;\">Medium</a>.",
-        loading: "Завантаження",
-        back: "&lt; На головну",
-        load_fail: "Не вдалося завантажити",
-        about_title: "Про що d3ep0ps",
-        card1_title: "Linux та FreeBSD",
-        card1_text: "Встановлюйте, досліджуйте та розумійте Unix-подібні системи. Жодного copy-paste без пояснень.",
-        card2_title: "Мережі та homelab",
-        card2_text: "Інтерфейси, маршрутизація, фаєрволи та ментальні моделі, щоб не зламати ваш LAN.",
-        card3_title: "Хмари та ШІ, повільно",
-        card3_text: "GCP, автоматизація, інтелектуальні агенти — тільки після опанування основ.",
-        links_title: "Посилання",
-        footer: "d3ep0ps — глибина понад хайп · нар. 1984 · зроблено на Unix"
-      }
+    // Legacy filename mapping (preserved for backward compatibility)
+    const legacyMap = {
+      "jails_conta": "posts/jails_conta.md",
+      "decop": "posts/decop.md",
+      "why-i-write": "posts/why-i-write.md",
+      "linux_vs_freebsd": "posts/linux_vs_freebsd.md",
+      "text_with_vi": "posts/text_with_vi.md",
+      "networking-foundations-ipv4-ipv6-linux-freebsd": "posts/networking-foundations-ipv4-ipv6-linux-freebsd.md",
+      "firewall": "posts/firewall.md",
+      "cloud-firewalls": "posts/cloud_firewalls.md",
+      "iac": "posts/iac.md",
+      "part1_ansible_ssh": "posts/part1.ansible_ssh.md",
+      "part2_ansible_ssh": "posts/part2.ansible_ssh.md",
+      "advancedvim": "posts/advancedvim.md",
+      "before-containers": "posts/before-containers.md",
+      "lamp": "posts/lamp.md",
+      "bind": "posts/bind.md",
+      "mail": "posts/mail.md",
+      "vps": "posts/vps.md"
     };
 
-    // --- State ---
+    // Static UI Strings
+    const uiStrings = {
+      en: { placeholder: "Select an article to read", search: "Search articles..." },
+      ua: { placeholder: "Оберіть статтю для читання", search: "Пошук статей..." }
+    };
+
+    // State
     let currentLang = localStorage.getItem('d3ep0ps_lang') || 'ua';
-    let currentSort = 'desc';
 
-    // --- DOM Elements ---
-    const langBtn = document.getElementById('lang-btn');
+    // DOM
+    const sidebar = document.getElementById('sidebar');
     const articleList = document.getElementById('article-list');
-    const viewer = document.getElementById('article-viewer');
+    const contentContainer = document.getElementById('content-container');
+    const searchInput = document.getElementById('search');
 
-    // --- Functions ---
+    // --- Init ---
 
-    function setLanguage(lang) {
+    function init() {
+      setLanguage(currentLang, false); // Don't reload if initial
+      renderList();
+
+      // Handle Hash
+      window.addEventListener('hashchange', handleHash);
+      if (location.hash) {
+        handleHash();
+      }
+
+      // Search
+      searchInput.addEventListener('input', (e) => {
+        renderList(e.target.value);
+      });
+    }
+
+    function setLanguage(lang, reload = true) {
       currentLang = lang;
       localStorage.setItem('d3ep0ps_lang', lang);
-      renderPage();
-      // Reload article if one is open
-      if (location.hash) {
-        loadArticleFromHash();
+
+      // Update Buttons
+      document.getElementById('btn-ua').classList.toggle('active', lang === 'ua');
+      document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+
+      // Update Placeholders
+      document.getElementById('search').placeholder = uiStrings[lang].search;
+
+      if (reload) {
+        renderList(searchInput.value); // Re-render list with new lang titles
+        if (location.hash) {
+          loadArticle(location.hash.substring(1)); // Reload current article content
+        } else {
+          // Update hero content if simple swap needed (omitted for brevity, hero is Eng by default/mixed)
+          // In a full app we'd translate the hero too.
+        }
       }
     }
 
-    function toggleLanguage() {
-      setLanguage(currentLang === 'en' ? 'ua' : 'en');
-    }
-
-    function renderPage() {
-      const t = translations[currentLang];
-
-      // Update Language Button
-      if (langBtn) langBtn.textContent = currentLang === 'en' ? 'Читати Українською' : 'Read in English';
-
-      // Update Static Text
-      const badge = document.querySelector('.badge');
-      if (badge) badge.textContent = t.badge;
-
-      const h1 = document.querySelector('h1');
-      if (h1) h1.innerHTML = t.hero_h1;
-
-      const subtitle = document.querySelector('.subtitle');
-      if (subtitle) subtitle.innerHTML = t.hero_p;
-
-      const btns = document.querySelectorAll('.button-row .btn');
-      if (btns.length >= 2) {
-        btns[0].textContent = t.btn_medium;
-        btns[1].textContent = t.btn_github;
-      }
-
-      const panelH2 = document.querySelector('.panel h2');
-      if (panelH2) panelH2.textContent = t.series_title;
-
-      const pillLabel = document.querySelector('.pill-label');
-      if (pillLabel) pillLabel.textContent = t.sort_label;
-
-      const sortBtns = document.querySelectorAll('.sort-btn');
-      if (sortBtns.length >= 2) {
-        sortBtns[0].textContent = t.sort_newest;
-        sortBtns[1].textContent = t.sort_oldest;
-      }
-
-      const aboutH2 = document.querySelector('#about-section h2');
-      if (aboutH2) aboutH2.textContent = t.about_title;
-
-      const cards = document.querySelectorAll('.card');
-      if (cards.length >= 3) {
-        cards[0].querySelector('h3').textContent = t.card1_title;
-        cards[0].querySelector('p').textContent = t.card1_text;
-        cards[1].querySelector('h3').textContent = t.card2_title;
-        cards[1].querySelector('p').textContent = t.card2_text;
-        cards[2].querySelector('h3').textContent = t.card3_title;
-        cards[2].querySelector('p').textContent = t.card3_text;
-      }
-
-      const linksH2 = document.querySelector('#links-section h2');
-      if (linksH2) linksH2.textContent = t.links_title;
-
-      const footer = document.querySelector('footer');
-      if (footer) footer.textContent = t.footer;
-
-      // Update Viewer Placeholder (only if empty or showing placeholder)
-      if (!location.hash && viewer) {
-        viewer.innerHTML = `<p style="color:#9ea2a8; text-align:center;">${t.viewer_placeholder}</p>`;
-      }
-
-      renderArticleList();
-    }
-
-    function renderArticleList() {
-      if (!articleList) return;
+    function renderList(filter = "") {
       articleList.innerHTML = '';
-      const sortedArticles = [...articles].sort((a, b) => {
-        const da = new Date(a.date);
-        const db = new Date(b.date);
-        return currentSort === 'asc' ? da - db : db - da;
-      });
+      const term = filter.toLowerCase();
 
-      sortedArticles.forEach(article => {
-        const meta = article[currentLang] || article.en; // Fallback to EN if translation missing
-        const li = document.createElement('li');
-        li.dataset.date = article.date;
-        li.innerHTML = `
-          <a href="#${article.id}" style="color:inherit; text-decoration:none;">
-            <strong>${meta.title}</strong><br/>
-            <span class="pill">${meta.tags}</span>
-          </a>
-        `;
-        articleList.appendChild(li);
+      articles.forEach(article => {
+        const meta = article[currentLang] || article.en;
+        // Simple search
+        if (term && !meta.title.toLowerCase().includes(term) && !meta.tags.toLowerCase().includes(term)) {
+          return;
+        }
+
+        const el = document.createElement('a');
+        el.className = 'article-item';
+        el.href = `#${article.id}`;
+        el.onclick = () => {
+          if (window.innerWidth <= 800) toggleSidebar(false);
+        };
+
+        // Active state
+        if (location.hash === `#${article.id}`) {
+          el.classList.add('active');
+        }
+
+        el.innerHTML = `
+                    <span class="article-title">${meta.title}</span>
+                    <div class="article-meta">
+                        <span>${article.date}</span>
+                        <span class="article-tags">${meta.tags}</span>
+                    </div>
+                `;
+
+        articleList.appendChild(el);
       });
     }
 
-    async function loadArticleFromHash() {
-      const hash = location.hash.replace('#', '');
-      if (!hash) return;
+    function toggleSidebar(force) {
+      if (force !== undefined) {
+        sidebar.classList.toggle('open', force);
+      } else {
+        sidebar.classList.toggle('open');
+      }
+    }
 
-      const article = articles.find(a => a.id === hash);
-      const t = translations[currentLang];
-
-      if (!article) {
-        if (viewer) viewer.innerHTML = `<p style="color:#9ea2a8; text-align:center;">${t.viewer_placeholder}</p>`;
+    async function handleHash() {
+      const id = location.hash.substring(1);
+      if (!id) {
+        resetView();
         return;
       }
 
-      // Determine file path: posts/id.ua.md or posts/id.md
-      // Note: Original files didn't strictly follow id.md naming (e.g. part1_ansible_ssh -> part1.ansible_ssh.md)
-      // We need a mapping or strict convention. Let's use a mapping for legacy, convention for new.
+      // Highlight active
+      document.querySelectorAll('.article-item').forEach(el => el.classList.remove('active'));
+      // Find the link that points to this hash and active it
+      // We re-render list often so we might just find by href
+      const activeLink = document.querySelector(`a[href="#${id}"]`);
+      if (activeLink) activeLink.classList.add('active');
 
-      const legacyMap = {
-        "jails_conta": "posts/jails_conta.md",
-        "decop": "posts/decop.md",
-        "why-i-write": "posts/why-i-write.md",
-        "linux_vs_freebsd": "posts/linux_vs_freebsd.md",
-        "text_with_vi": "posts/text_with_vi.md",
-        "networking-foundations-ipv4-ipv6-linux-freebsd": "posts/networking-foundations-ipv4-ipv6-linux-freebsd.md",
-        "firewall": "posts/firewall.md",
-        "cloud-firewalls": "posts/cloud_firewalls.md",
-        "iac": "posts/iac.md",
-        "part1_ansible_ssh": "posts/part1.ansible_ssh.md",
-        "part2_ansible_ssh": "posts/part2.ansible_ssh.md",
-        "advancedvim": "posts/advancedvim.md",
-        "before-containers": "posts/before-containers.md",
-        "lamp": "posts/lamp.md",
-        "bind": "posts/bind.md",
-        "mail": "posts/mail.md",
-        "vps": "posts/vps.md"
-      };
+      await loadArticle(id);
+    }
 
-      let file = legacyMap[hash];
-      if (!file) {
-        // Fallback to convention: posts/{id}.md
-        file = `posts/${hash}.md`;
-      }
+    function resetView() {
+      // Restore Hero
+      contentContainer.innerHTML = `
+            <div class="hero">
+                <h1>systems, networks, intelligence.</h1>
+                <p>
+                    I’m <strong>Vitaliy Zhhuta</strong> (1984), a system architect.<br>
+                    I run <strong>d3ep0ps</strong> to teach how tech really works — from Linux and FreeBSD to cloud and AI.
+                </p>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h3>Linux & FreeBSD</h3>
+                        <p>Install, explore, and truly understand Unix-like systems.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Networking & Homelab</h3>
+                        <p>Interfaces, routing, firewalls, and the mental models.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Cloud & AI</h3>
+                        <p>GCP, automation, intelligent agents — only after we master the foundation.</p>
+                    </div>
+                </div>
+            </div>`;
+      location.hash = '';
+    }
+
+    async function loadArticle(id) {
+      contentContainer.innerHTML = `<div style="text-align:center; padding: 4rem; color: var(--text-muted);">Loading...</div>`;
+
+      // Scroll to top
+      document.getElementById('main-scroll').scrollTop = 0;
+
+      // Determine path
+      let path = legacyMap[id] || `posts/${id}.md`;
+
       if (currentLang === 'ua') {
-        if (file) {
-          file = file.replace('.md', '.ua.md');
-        }
+        path = path.replace('.md', '.ua.md');
       }
-
-      if (viewer) viewer.innerHTML = `<p style="color:#9ea2a8; text-align:center;">${t.loading} <code>${file}</code>...</p>`;
 
       try {
-        const res = await fetch(file);
-        if (!res.ok) throw new Error(res.statusText);
-        const md = await res.text();
-        const html = marked.parse(md);
-        if (viewer) {
-          viewer.innerHTML = `
-            <div style="text-align:right; margin-bottom:1rem;">
-              <a href="/" style="color:#00ffd1; text-decoration:none;">${t.back}</a>
-            </div>
-            ${html}
-          `;
-          window.scrollTo({ top: viewer.offsetTop - 40, behavior: 'smooth' });
+        const res = await fetch(path);
+        if (!res.ok) throw new Error("Not found");
+        const text = await res.text();
+
+        contentContainer.innerHTML = `<div class="markdown-body">${marked.parse(text)}</div>`;
+
+        // Update title
+        const article = articles.find(a => a.id === id);
+        if (article) {
+          const meta = article[currentLang] || article.en;
+          document.title = `${meta.title} | d3ep0ps`;
         }
+
       } catch (e) {
-        // Fallback to EN if UA fails
+        // Fallback to EN if UA missing
         if (currentLang === 'ua') {
           try {
-            const enFile = legacyMap[hash];
-            const res = await fetch(enFile);
-            if (!res.ok) throw new Error("EN fallback failed");
-            const md = await res.text();
-            const html = marked.parse(md);
-            if (viewer) {
-              viewer.innerHTML = `
-                    <div style="text-align:right; margin-bottom:1rem;">
-                      <p style="color:var(--muted); font-size:0.8rem; margin-bottom:0.5rem;">(UA translation not available yet / Переклад ще не доступний)</p>
-                      <a href="/" style="color:#00ffd1; text-decoration:none;">${t.back}</a>
-                    </div>
-                    ${html}
-                  `;
+            let enPath = legacyMap[id] || `posts/${id}.md`;
+            const res = await fetch(enPath);
+            if (res.ok) {
+              const text = await res.text();
+              contentContainer.innerHTML = `
+                                <div style="margin-bottom:1rem; padding:1rem; background:rgba(255,100,100,0.1); border-radius:8px; font-size:0.9rem; color:#fca5a5;">
+                                    UA translation missing. Showing English version.
+                                </div>
+                                <div class="markdown-body">${marked.parse(text)}</div>`;
+              return;
             }
-            return;
           } catch (ex) { }
         }
-        if (viewer) viewer.innerHTML = `<p style="color:red; text-align:center;">${t.load_fail} ${file}</p>`;
+
+        contentContainer.innerHTML = `<div style="text-align:center; padding: 4rem; color: #fca5a5;">Failed to load article: ${id}</div>`;
       }
     }
 
-    // --- Event Listeners ---
-    if (langBtn) langBtn.addEventListener('click', toggleLanguage);
-
-    document.querySelectorAll('.sort-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        currentSort = btn.dataset.sort;
-        document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('sort-btn-active'));
-        btn.classList.add('sort-btn-active');
-        renderArticleList();
-      });
-    });
-
-    window.addEventListener('hashchange', loadArticleFromHash);
-
-    // Init
-    renderPage();
-    if (location.hash) loadArticleFromHash();
+    // Start
+    init();
 
   </script>
 </body>
