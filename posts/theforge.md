@@ -25,7 +25,7 @@ A professional Forge requires clear boundaries. In my implementation, I separate
 
 ## 3. The Mechanics of the Pipeline
 
-Using **GitLab CI** and **Google Cloud Build**, the process follows a strict "No-Human" rule:
+Using **GitLab** (as our source) and **Google Cloud Build** (as our builder), the process follows a strict "No-Human" rule:
 
 * **The Build:** The Forge hammers the code into an **Immutable Artifact**. For Linux, this is a Docker Image. For FreeBSD, we use automation like `bastille bootstrap` to create a pristine, versioned Jail template.
 * **The Registry:** The image is pushed to a private armory. We never deploy "raw code"; we only ever deploy versioned, tested images.
@@ -107,7 +107,7 @@ In both architectures, the developer never checks in a password, and the operato
 Velocity is dangerous without brakes. The most critical feature of **The Forge** isn't how fast it deploys, but how fast it **un-deploys**.
 
 **The "Never Use Latest" Rule:**
-In my `.gitlab-ci.yml`, I enforce a strict tagging policy. We **never** deploy the `:latest` tag.
+In my `cloudbuild.yaml`, I enforce a strict tagging policy. We **never** deploy the `:latest` tag.
 
 * **Production:** Uses Semantic Versioning (e.g., `v1.2.4`).
 * **Staging:** Uses the Git Commit Short SHA (e.g., `a1b2c3d`).
