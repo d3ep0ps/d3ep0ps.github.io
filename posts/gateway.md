@@ -12,8 +12,6 @@ The problem isn't that the user's browser can't find you—the user only ever se
 
 We need a **Gateway** that is as dynamic as the cluster it protects.
 
----
-
 ## 1. The Entry Point: North-South Traffic
 
 In a mature architecture, we distinguish between two traffic flows:
@@ -22,8 +20,6 @@ In a mature architecture, we distinguish between two traffic flows:
 * **North-South:** Traffic coming from the Internet *into* the cluster.
 
 The Gateway sits at the **Edge**. It is the only component exposed to the "North" (the Internet). Its job is to translate a public request for your domain into a private request for a specific, healthy container living somewhere in the "South" (the Cluster).
-
----
 
 ## 2. The Mechanics: Load Balancing vs. Ingress
 
@@ -37,8 +33,6 @@ This is pure networking. The Load Balancer sits at the very edge, receiving raw 
 
 This is where the "intelligence" lives. The Ingress Controller looks *inside* the HTTP request. It sees that the user is asking for `/api/v1` and, by talking to **Consul**, knows exactly which internal IP and port currently host that service.
 
----
-
 ## 3. The Choice: Architecture over Tooling
 
 Selecting the right engine for your Gateway depends on your specific requirements for a hybrid FreeBSD/Linux stack:
@@ -46,8 +40,6 @@ Selecting the right engine for your Gateway depends on your specific requirement
 * **Nginx:** The Swiss Army Knife. A world-class Web Server that is also a very capable Reverse Proxy. It is likely already in your stack, but making it "cluster-aware" usually requires external helpers (like `consul-template`) to rewrite its configuration on the fly.
 * **HAProxy:** The Specialist. Arguably the most stable and performant Load Balancer available. It focuses entirely on moving traffic with extreme efficiency. If you are handling massive scale with complex routing rules, this is the professional choice.
 * **Traefik:** The Modernist. Built specifically for microservices, it was designed to talk directly to schedulers like **Nomad**. It doesn't need a static configuration file for its backends; it simply asks the cluster who is alive and configures itself in real-time.
-
----
 
 ## 4. The Automated Handshake
 
@@ -81,16 +73,12 @@ service {
 
 When a user hits your Public IP, the Gateway already knows the new internal coordinates. The user sees a seamless experience; the architect sees a perfectly synchronized swarm.
 
----
-
 ## 5. Security at the Edge: TLS and the DMZ
 
 The Gateway is your most exposed component, making it your primary security layer:
 
 * **TLS Termination:** The Gateway handles SSL certificates. This keeps internal cluster traffic lightweight while ensuring external traffic is encrypted (HTTPS).
 * **Isolation:** By using a Gateway, your application servers never need a Public IP. They live in a private subnet, shielded from direct internet exposure.
-
----
 
 ## Conclusion
 
