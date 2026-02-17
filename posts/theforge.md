@@ -102,6 +102,27 @@ Instead of syncing secrets *into* the cluster, Nomad integrates directly with Va
 
 In both architectures, the developer never checks in a password, and the operator never sees one. The secret exists only when the application needs it.
 
+## 5. The Safety Net: Instant Rollbacks
+
+Velocity is dangerous without brakes. The most critical feature of **The Forge** isn't how fast it deploys, but how fast it **un-deploys**.
+
+**The "Never Use Latest" Rule:**
+In my `.gitlab-ci.yml`, I enforce a strict tagging policy. We **never** deploy the `:latest` tag.
+
+* **Production:** Uses Semantic Versioning (e.g., `v1.2.4`).
+* **Staging:** Uses the Git Commit Short SHA (e.g., `a1b2c3d`).
+
+**The Rollback Mechanism:**
+Because every deployment is defined by a code artifact (the job file), a rollback is not a complex "undo" operation. It is simply a **re-deployment of the previous known-good state**.
+
+If `v1.3.0` crashes the API:
+
+1. Identify the previous version (e.g., `v1.2.9`).
+2. Submit the `v1.2.9` job file to the cluster.
+3. The Swarm kills the bad containers and spins up the old ones.
+
+Time to recovery: **Seconds**.
+
 ## Conclusion
 
 The Forge is the heart of the "D" in **DevOps**. It bridges the gap between **Development** and **Operations**.
