@@ -332,6 +332,7 @@
       font-size: 3rem;
       background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
       margin-bottom: 1rem;
     }
@@ -520,16 +521,28 @@
     // --- Data ---
     const articles = [
       {
-        id: "theforge",
-        date: "2026-02-17",
-        en: { title: "The Forge: Continuous Integration and the Automated Pipeline", tags: "ci/cd · gitlab · automation" },
-        ua: { title: "Кузня: Безперервна Інтеграція та Автоматизований Конвеєр", tags: "ci/cd · gitlab · автоматизація" }
+        id: "mlops",
+        date: "2026-03-24",
+        en: { title: "From DevOps to MLOps: Engineering Uncertainty", tags: "mlops · ai · engineering · monitoring" },
+        ua: { title: "Від DevOps до MLOps: Інженерія Невизначеності", tags: "mlops · ai · інженерія · моніторинг" }
+      },
+      {
+        id: "akf.dou",
+        date: "2026-03-23",
+        en: { title: "3 Dimensions of System Scaling: Why Autoscaling is Only Part of the Picture", tags: "scaling · architecture · akf" },
+        ua: { title: "3 виміри масштабування систем: чому автомасштабування — це лише частина картини", tags: "масштабування · архітектура · akf" }
       },
       {
         id: "storage",
         date: "2026-02-24",
         en: { title: "The Vault: Persistent Data and Database Migrations", tags: "storage · databases · csi" },
         ua: { title: "Сховище: Постійні дані та міграції баз даних", tags: "сховище · databases · csi" }
+      },
+      {
+        id: "theforge",
+        date: "2026-02-17",
+        en: { title: "The Forge: Continuous Integration and the Automated Pipeline", tags: "ci/cd · gitlab · automation" },
+        ua: { title: "Кузня: Безперервна Інтеграція та Автоматизований Конвеєр", tags: "ci/cd · gitlab · автоматизація" }
       },
       {
         id: "gateway",
