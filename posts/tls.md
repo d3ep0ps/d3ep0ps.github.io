@@ -485,7 +485,7 @@ metadata:
 spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    email: zhhuta@gmail.com
+    email: some_email@d3ep0ps.com
     privateKeySecretRef:
       name: letsencrypt-staging-key
     solvers:
@@ -509,7 +509,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: zhhuta@gmail.com
+    email: some_email@d3ep0ps.com
     privateKeySecretRef:
       name: letsencrypt-prod-key
     solvers:
