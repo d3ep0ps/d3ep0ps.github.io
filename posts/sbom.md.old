@@ -1,0 +1,873 @@
+# Security as Code: SBOM and the Secure Software Factory
+
+> **"Trust, but verify. In software supply chains, don't trust at all — verify everything."**
+
+In the previous article, **TLS From First Principles**, we secured the *channel*. We proved that when your browser talks to a server, the connection is encrypted, authenticated, and tamper-proof. The padlock in the address bar means something.
+
+But here is the uncomfortable question TLS doesn't answer: *what is actually running on that server?*
+
+A valid TLS certificate proves you are talking to the right machine. It says nothing about the code executing on it. The SolarWinds attack in 2020 didn't break TLS. The Log4Shell zero-day in 2021 didn't exploit a weak cipher. Both attacks travelled through perfectly valid, correctly configured HTTPS connections. They exploited something else entirely: **trust in the software supply chain**.
+
+This article is about closing that gap. We will build a **Secure Software Factory** — a pipeline where every artifact is inventoried, every dependency is scanned, every image is signed, and every deployment is gated by policy. We will use a real production architecture as our reference: a set of AI agents running on GCP infrastructure.
+
+This is **Part 1** of two articles. We cover supply chain security here — the infrastructure and tooling layer. Part 2 will cover the threats that are unique to AI systems themselves: prompt injection, model poisoning, and agent-to-agent trust.
+
+---
+
+## 1. The Reference System: AI Agents on GCP
+
+Before we can secure a system, we need to understand what we are securing. Our reference architecture is a multi-agent AI system built on GCP:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        GCP Project                          │
+│                                                             │
+│   ┌──────────────┐    A2A     ┌──────────────────────────┐  │
+│   │  Orchestrator│◄──────────►│   Specialist Agents      │  │
+│   │    Agent     │  Protocol  │  (retrieval, execution,  │  │
+│   │  (Google ADK)│            │   synthesis...)          │  │
+│   └──────┬───────┘            └──────────┬───────────────┘  │
+│          │                               │                  │
+│          ▼                               ▼                  │
+│   ┌─────────────────────────────────────────────────────┐   │
+│   │                    GKE Cluster                      │   │
+│   │         (Autopilot, Workload Identity enabled)      │   │
+│   └──────────────────────┬──────────────────────────────┘   │
+│                          │                                  │
+│         ┌────────────────┼────────────────┐                 │
+│         ▼                ▼                ▼                 │
+│   ┌──────────┐   ┌──────────────┐  ┌──────────────────┐    │
+│   │ AlloyDB  │   │  Artifact    │  │  Secret Manager  │    │
+│   │(vector + │   │  Registry    │  │  (API keys, DB   │    │
+│   │ context) │   │  (images +   │  │   credentials)   │    │
+│   └──────────┘   │   SBOMs)     │  └──────────────────┘    │
+│                  └──────────────┘                          │
+│                                                             │
+│   Infrastructure: Terraform  │  CI/CD: Cloud Build         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+The key components:
+
+- **Google Agent Development Kit (ADK)** — the Python framework for building the agents themselves. Each agent runs in its own container.
+- **A2A Protocol** — the communication layer between agents. An orchestrator delegates tasks to specialist agents (retrieval, code execution, synthesis) over a defined, typed interface.
+- **GKE (Autopilot)** — the container runtime. Workload Identity is enabled so pods authenticate to GCP services without static credentials.
+- **AlloyDB** — stores both structured application data and vector embeddings for RAG (retrieval-augmented generation). The agents' long-term memory.
+- **Artifact Registry** — the private container registry. Also where we will store SBOMs as OCI artifacts alongside images.
+- **Terraform** — manages all GCP infrastructure declaratively. The IaC layer is itself an attack surface we will scan.
+- **Cloud Build** — the CI/CD engine. Every image is built, scanned, signed, and attested here before it reaches the cluster.
+
+This is a real production architecture. Every security decision in this article is grounded in it.
+
+---
+
+## 2. The Dependency Iceberg
+
+Here is a question most engineers cannot answer about their own production systems: *how many packages are in your running container?*
+
+For a Python-based AI agent, the answer is usually surprising. Your `requirements.txt` might list 15 direct dependencies. But those 15 packages each have their own dependencies, which have dependencies of their own. Add the base OS image packages. Add the Google ADK framework and the Google Cloud SDK. Add numpy, which pulls in a C extension ecosystem of its own.
+
+A typical Python AI agent image contains between 300 and 600 installed packages. You wrote the code for perhaps 20 of them. The other 580 came from PyPI, the OS package manager, and the base image — most of which you have never read, audited, or even consciously chosen.
+
+This is the **dependency iceberg**. What you see (your code) is the 10% above the waterline. What you are actually running is the 90% below it.
+
+**Log4Shell** made this concrete in December 2021. CVE-2021-44228 was a critical remote code execution vulnerability in `log4j-core`, a Java logging library. The severity was CVSS 10.0 — the maximum. The patch was released within days. But the triage took most organisations *weeks*, because they had to first answer the question: *do we even use log4j?*
+
+Teams with proper dependency inventory answered that question in minutes with a single query. Teams without it manually audited hundreds of services, asking developers to check their `pom.xml` files by hand. The difference was not a security tool — it was the discipline of knowing what you are running before you need to know.
+
+For AI systems, the iceberg is even more treacherous. AI agents pull in ML frameworks (PyTorch, TensorFlow, or JAX), LLM client libraries (google-generativeai, openai, anthropic), data processing libraries (pandas, numpy, arrow), and vector database clients — each of which carries its own dependency tree. The surface area is genuinely large.
+
+The Software Bill of Materials is the X-ray that makes the iceberg visible.
+
+### The First Line of Defense: Dependency Pinning
+
+Before we look at containers and scanners, supply chain security starts at the source. If your `requirements.txt` contains loose dependencies (e.g., `requests>=2.28.0`), your builds are non-deterministic. A patch release on PyPI containing a malicious payload or a broken dependency will be pulled into your environment automatically on the next run.
+
+To prevent this, you must use a lockfile that records the exact version and cryptographic hash of every direct and transitive dependency.
+
+Modern tooling has made this trivial. **uv** — Astral's high-performance Python package manager written in Rust — can resolve your dependencies and generate a secure, hashed manifest in milliseconds:
+
+```bash
+# Resolve requirements.in and generate requirements.txt with cryptographic hashes
+uv pip compile requirements.in --generate-hashes -o requirements.txt
+```
+
+By compiling dependencies with hashes, you guarantee that your build environment will only install packages that match the exact bytes you vetted during development.
+
+---
+
+## 3. The Four-Layer Security Stack
+
+Before we install anything, the architecture. A complete supply chain security posture for this system has four distinct layers, each catching a different class of problem.
+
+```
+Source Code → Build → Sign → Push → Deploy → Run
+     │           │       │       │        │
+     ▼           ▼       ▼       ▼        ▼
+  [tfsec]    [Grype]  [Cosign]  [AR]  [Gatekeeper]
+  [Checkov]  [syft]             [scan] [Bin Auth]
+```
+
+**Layer 1 — Inventory (syft + CycloneDX SBOM)**
+Know every component in every artifact you ship. A Software Bill of Materials is a machine-readable manifest: package name, version, origin, license, and hashes. The format we use is **CycloneDX** — the OWASP standard with the best tooling ecosystem for vulnerability correlation.
+
+An SBOM does not tell you what is vulnerable. It tells you what you have. That distinction matters: an SBOM generated today remains useful when a new CVE is published six months from now, because you can query it retroactively.
+
+**Layer 2 — Vulnerability Scanning (Grype)**
+Map the inventory against known CVE databases. **Grype**, developed by Anchore, consumes an SBOM or scans an image directly, and produces a report of every known vulnerability in your dependency tree, matched against NVD, GitHub Advisories, and OS-specific security feeds.
+
+Scanning in CI — before the image is pushed — means you learn about critical vulnerabilities before your attacker does, and before the image ever reaches production.
+
+**Layer 3 — Image Signing (Cosign + Sigstore)**
+An SBOM proves what's in your image. A vulnerability scan tells you what's dangerous. But neither of these prevents a tampered image from being deployed. **Cosign** solves this with cryptographic image signing: a signature is attached to the image manifest in the registry, binding the image digest to a verifiable identity (your build pipeline or your key pair).
+
+If an image in the registry doesn't carry a valid signature from your pipeline, it didn't come from your pipeline — regardless of what the tag says.
+
+**Layer 4 — Policy Enforcement (OPA/Gatekeeper + Binary Authorization)**
+Signing proves provenance. Enforcement *blocks* non-compliant images from running. **OPA Gatekeeper** acts as a Kubernetes admission webhook: every `kubectl apply` and every Pod creation is evaluated against your policies before the API server accepts it. **Binary Authorization** is GCP's native equivalent, integrated directly with GKE and Cloud Build.
+
+Together, these four layers form a chain of trust from source commit to running container. Each layer can be compromised independently. All four together make the chain genuinely hard to break.
+
+**The fifth attack surface: Infrastructure as Code**
+Your Terraform files are also an artifact. A misconfigured GKE node pool, an AlloyDB instance without audit logging, a VPC firewall rule that's too permissive — these are vulnerabilities in the infrastructure layer that CI/CD pipelines traditionally ignore. **tfsec** and **Checkov** bring the same scanning discipline to Terraform that Grype brings to container images.
+
+---
+
+## 4. Progressive Security: Choose Your Tier
+
+The correct security posture depends on where you are. A solo developer building a prototype has different risk tolerance, different compliance obligations, and different operational capacity than a team running a production AI system for enterprise clients.
+
+The following tiers are not stages of maturity to feel guilty about. They are deliberate, defensible choices — each with a clear rationale.
+
+| | **Tier 1 — Solo / Startup** | **Tier 2 — Team / Production** | **Tier 3 — Enterprise** |
+|---|---|---|---|
+| **SBOM** | syft → JSON file, stored as CI artifact | syft → OCI artifact in Artifact Registry | syft + Dependency-Track for continuous querying |
+| **CI gate (blocking)** | Grype, fail on CRITICAL | Grype, fail on HIGH | Grype, fail on HIGH |
+| **Continuous re-scan** | ❌ — no capacity to act on alerts | AR scanning + alert on new HIGH/CRITICAL | AR scanning → Security Command Center |
+| **Image signing** | Cosign key-based (key in Secret Manager) | Cosign keyless via OIDC (Cloud Build identity) | Keyless + full attestation chain |
+| **IaC scanning** | tfsec on `terraform plan` output | tfsec + Checkov across all IaC + K8s manifests | tfsec + Checkov + SARIF → Security Command Center |
+| **Enforcement** | Manual review of scan results | Gatekeeper: registry pinning + digest enforcement | Binary Authorization: require Cloud Build attestation |
+| **Dependency hygiene** | Manual | Renovate automated PRs | Renovate + SBOM diff on every PR |
+| **Setup time** | ~2 hours | ~1 day | ~1 week |
+
+A note on the vulnerability scanning row, because it often causes confusion: **Grype** and **Artifact Registry scanning** are not redundant — they operate at different points in time and serve different purposes.
+
+Grype runs in CI *before* the image is pushed. It is a **blocking gate**: if it finds a CRITICAL, the build fails and the image never reaches the registry. This is the tool that actually prevents vulnerable code from being deployed.
+
+Artifact Registry scanning runs *after* the image is pushed. It **cannot block anything** — the image is already in the registry. What it adds is *temporal coverage*: it re-scans images automatically when new CVEs are published. An image you pushed three months ago with a clean Grype result may have new HIGH vulnerabilities today because a CVE was disclosed last week. AR scanning catches that drift. But its value only materialises if you have alerts wired up and operational capacity to act on them — which is why it belongs in Tier 2, not Tier 1.
+
+**Start at Tier 1.** Two hours to implement. Grype alone is sufficient as a CI gate: it catches critical vulnerabilities before the image ever reaches the registry. Skipping AR scanning at this tier is a deliberate decision, not an oversight — there is no point enabling continuous alerts if you have no process to act on them.
+
+**Move to Tier 2** when you have more than one person pushing code, or when your system handles data that belongs to someone other than yourself. Enable AR scanning *and* configure alerts — otherwise you are paying for a monitor nobody watches. The keyless signing model eliminates key management entirely, and Gatekeeper enforces that only registry-pinned, digest-referenced images can run on GKE.
+
+**Tier 3** is the right choice when you have compliance requirements (SOC 2, ISO 27001, HIPAA), when you are running AI agents on behalf of enterprise clients, or when the blast radius of a compromised image is measured in customer data rather than your own experiments. AR scanning results flow into Security Command Center for a unified security posture view alongside IAM, network, and configuration findings.
+
+---
+
+## 5. Practice: Building the Secure Software Factory
+
+All examples assume the reference architecture described in Section 1. The Cloud Build pipeline snippets are additive — we start with Tier 1 and extend to Tier 3. The GKE cluster is assumed to be running on GKE Autopilot with Workload Identity enabled.
+
+---
+
+### 5.1 — Tier 1: Minimum Viable Security
+
+#### Install the tools
+
+```bash
+# Install syft (SBOM generator)
+curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+# Install Grype (vulnerability scanner)
+curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+
+# Install Cosign (image signing)
+curl -sSfL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
+  -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
+```
+
+#### Dockerfile: Secure & Fast Python Builds with `uv`
+
+Here is how to write the agent's `Dockerfile` to leverage `uv` for reproducible, secure, and fast builds:
+
+```dockerfile
+FROM python:3.11-slim
+
+# Install uv binary directly from the official image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+
+# Copy the compiled lockfile (must be pre-generated via:
+#   uv pip compile requirements.in --generate-hashes -o requirements.txt)
+COPY requirements.txt .
+
+# Install dependencies using the compiled requirements file with hashes
+RUN uv pip install --system --no-cache -r requirements.txt
+
+COPY . .
+```
+
+#### Generate a CycloneDX SBOM
+
+```bash
+# Generate an SBOM from a built image
+# The SBOM captures every package: OS-level, Python pip, and direct deps
+syft us-central1-docker.pkg.dev/my-project/agents/orchestrator:v1.2.0 \
+  -o cyclonedx-json \
+  --file orchestrator-sbom.json
+
+# Inspect what syft found
+cat orchestrator-sbom.json | jq '.components | length'
+# e.g. 412 — every package in the image, with version and origin
+
+# See all Python packages specifically
+cat orchestrator-sbom.json | jq '.components[] | select(.type == "library") | {name: .name, version: .version}' | head -30
+```
+
+The SBOM JSON is a complete manifest. A snippet of what it contains:
+
+```json
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "metadata": {
+    "component": {
+      "name": "orchestrator",
+      "version": "v1.2.0",
+      "type": "container"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "google-adk",
+      "version": "0.4.0",
+      "purl": "pkg:pypi/google-adk@0.4.0",
+      "licenses": [{ "license": { "id": "Apache-2.0" } }]
+    },
+    {
+      "type": "library",
+      "name": "cryptography",
+      "version": "41.0.3",
+      "purl": "pkg:pypi/cryptography@41.0.3"
+    }
+    // ... 410 more components
+  ]
+}
+```
+
+Store this file as a CI artifact. When Log4Shell-equivalent drops for a Python package, you will query this file in seconds.
+
+#### Scan for vulnerabilities with Grype
+
+```bash
+# Scan the image directly (Grype builds its own SBOM internally)
+grype us-central1-docker.pkg.dev/my-project/agents/orchestrator:v1.2.0
+
+# Or feed your existing SBOM to Grype (faster, consistent)
+grype sbom:./orchestrator-sbom.json
+
+# For CI: fail on CRITICAL or HIGH severity
+grype sbom:./orchestrator-sbom.json --fail-on critical
+
+# Output in table format (human) or JSON (CI/CD integration)
+grype sbom:./orchestrator-sbom.json -o json | jq '.matches[] | select(.vulnerability.severity == "Critical")'
+```
+
+Grype output looks like this:
+
+```
+NAME              INSTALLED   FIXED-IN    TYPE    VULNERABILITY   SEVERITY
+cryptography      41.0.3      41.0.4      python  CVE-2023-49083  Medium
+certifi           2023.7.22   2023.7.22   python  CVE-2023-37920  High
+requests          2.28.2      2.31.0      python  CVE-2023-32681  Medium
+```
+
+The `FIXED-IN` column is the most important: if a fix exists and the severity is CRITICAL or HIGH, that's a package to update immediately.
+
+#### Sign the image with Cosign (key-based)
+
+```bash
+# Generate a signing key pair
+# Store the private key in GCP Secret Manager — never on disk in CI
+cosign generate-key-pair --kms gcpkms://projects/my-project/locations/global/keyRings/cosign/cryptoKeys/signing-key
+
+# Sign the image after push
+cosign sign --key gcpkms://projects/my-project/locations/global/keyRings/cosign/cryptoKeys/signing-key \
+  us-central1-docker.pkg.dev/my-project/agents/orchestrator:v1.2.0
+
+# Verify the signature
+cosign verify --key gcpkms://projects/my-project/locations/global/keyRings/cosign/cryptoKeys/signing-key \
+  us-central1-docker.pkg.dev/my-project/agents/orchestrator:v1.2.0
+```
+
+#### Tier 1 Cloud Build pipeline
+
+```yaml
+# cloudbuild.yaml — Tier 1
+steps:
+  # 1. Build the agent image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '$_IMAGE_TAG', '-f', 'agents/orchestrator/Dockerfile', '.']
+
+  # 2. Generate SBOM with syft
+  - name: 'anchore/syft'
+    args: ['$_IMAGE_TAG', '-o', 'cyclonedx-json', '--file', '/workspace/sbom.json']
+
+  # 3. Scan with Grype — fail on CRITICAL
+  - name: 'anchore/grype'
+    args: ['sbom:/workspace/sbom.json', '--fail-on', 'critical']
+
+  # 4. Push to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '$_IMAGE_TAG']
+
+  # 5. Sign with Cosign (KMS key)
+  - name: 'gcr.io/projectsigstore/cosign'
+    args:
+      - 'sign'
+      - '--key'
+      - 'gcpkms://projects/$PROJECT_ID/locations/global/keyRings/cosign/cryptoKeys/signing-key'
+      - '$_IMAGE_TAG'
+    env:
+      - 'COSIGN_EXPERIMENTAL=0'
+
+artifacts:
+  objects:
+    location: 'gs://my-project-sboms/$BUILD_ID/'
+    paths: ['/workspace/sbom.json']
+
+substitutions:
+  _IMAGE_TAG: 'us-central1-docker.pkg.dev/my-project/agents/orchestrator:$SHORT_SHA'
+```
+
+This pipeline catches critical vulnerabilities before an image ever reaches the registry, and every image that makes it through is signed. Total setup time: under two hours.
+
+#### Taking it further: Agentic DevSecOps
+
+If you are developing alongside an AI coding assistant (such as **Claude Code** or **Antigravity**), you can automate the entire security scanning workflow inside your development loop — without memorising tool parameters.
+
+By placing a custom **Skill** file directly in your repository (for example, under `.agent/skills/software_security/SKILL.md`), you make your repository "agent-ready". When you ask your coding assistant to *"run a security sweep"*, it reads these instructions, runs the corresponding local tools, and writes clean Markdown summaries for you.
+
+Instead of keeping the entire security scanning logic local to one project, we can centralize our security rules. You can find the full, production-ready version of this skill on GitHub:
+
+👉 **[d3ep0ps/agents-skills/software_security](https://github.com/d3ep0ps/agents-skills/tree/main/software_security)**
+
+With this central skill in place, you can ask your AI coding assistant (like **Antigravity** or **Claude Code**):
+> *"Run a full security scan on the repository and generate the dashboard"*
+
+The agent will read the instruction set from your `agents-skills` workspace, orchestrate `syft`, `grype`, `bandit`, `pip-audit`, and `checkov`, and compile all outputs into a consolidated security report for your human review. This integrates deep security auditing directly into your active coding loop, rather than discovering vulnerability flags late in the CI/CD pipeline.
+
+---
+
+### 5.2 — Tier 2: Production-Grade
+
+Tier 2 upgrades three things: signing becomes keyless, the SBOM travels with the image in the registry, and Gatekeeper enforces policy at the cluster admission layer.
+
+#### Cosign keyless signing via OIDC (Cloud Build)
+
+Keyless signing uses the identity of the build environment rather than a static key. In Cloud Build, the build runs as a GCP service account with a verifiable OIDC token. Cosign uses that token to sign, logging the signature in **Rekor** — Sigstore's public, append-only transparency log.
+
+The benefit: there is no private key to rotate, lose, or have stolen. The signature is verifiable by anyone who knows the Cloud Build service account identity.
+
+```yaml
+# In cloudbuild.yaml — replace the Cosign step with:
+  - name: 'gcr.io/projectsigstore/cosign'
+    args:
+      - 'sign'
+      - '--oidc-provider=google'
+      - '$_IMAGE_TAG'
+    # COSIGN_EXPERIMENTAL=1 was required in Cosign v1 to enable keyless mode.
+    # In Cosign v2+, keyless signing is the default — this flag is a no-op but harmless.
+```
+
+Verify a keyless signature:
+
+```bash
+cosign verify \
+  --certificate-oidc-issuer=https://accounts.google.com \
+  --certificate-identity=serviceAccount:cloud-build@my-project.iam.gserviceaccount.com \
+  us-central1-docker.pkg.dev/my-project/agents/orchestrator:v1.2.0
+```
+
+The verification passes only if the image was signed by a Cloud Build job running as that specific service account. No other entity can forge this signature.
+
+#### Attach the SBOM as an OCI artifact
+
+Instead of storing the SBOM in GCS, attach it directly to the image in Artifact Registry as an OCI referrer. The SBOM and image travel together:
+
+```bash
+# Attach the SBOM to the image as an OCI artifact
+cosign attach sbom \
+  --sbom orchestrator-sbom.json \
+  --type cyclonedx \
+  us-central1-docker.pkg.dev/my-project/agents/orchestrator:v1.2.0
+
+# Retrieve the SBOM from any image later
+cosign download sbom \
+  us-central1-docker.pkg.dev/my-project/agents/orchestrator:v1.2.0 > retrieved-sbom.json
+```
+
+Now any tool or team that has access to the image also has access to its full component manifest — without consulting a separate storage system.
+
+#### Enable Artifact Registry continuous scanning
+
+This is the step that was deliberately absent from Tier 1. Artifact Registry scanning is not a CI gate — it cannot fail a build. Its job is to re-scan images already in the registry when new CVEs are published, catching vulnerabilities that didn't exist at build time.
+
+Enable it now, alongside wired-up alerts, so there is a process to act on what it finds:
+
+```bash
+# Enable the Container Scanning API (one-time, project level)
+gcloud services enable containerscanning.googleapis.com
+
+# Enable continuous scanning on your Artifact Registry repository
+gcloud artifacts repositories update agents \
+  --location=us-central1 \
+  --vulnerability-scanning=enabled
+```
+
+Configure a Pub/Sub notification so new HIGH/CRITICAL findings don't sit unread in the console:
+
+```bash
+# Create a Pub/Sub topic for vulnerability notifications
+gcloud pubsub topics create container-vulnerabilities
+
+# Create a notification config on the registry
+gcloud artifacts repositories add-iam-policy-binding agents \
+  --location=us-central1 \
+  --member="serviceAccount:service-$(gcloud projects describe $(gcloud config get-value project) --format='value(projectNumber)')@gcp-sa-containerscanning.iam.gserviceaccount.com" \
+  --role="roles/pubsub.publisher"
+```
+
+You can also query findings programmatically — useful for a periodic audit script or a dashboard:
+
+```bash
+gcloud artifacts docker images list-vulnerabilities \
+  us-central1-docker.pkg.dev/my-project/agents/orchestrator:v1.2.0 \
+  --format="table(vulnerability.effectiveSeverity, vulnerability.shortDescription, packageIssue[0].affectedPackage)" \
+  --filter="vulnerability.effectiveSeverity=CRITICAL OR vulnerability.effectiveSeverity=HIGH"
+```
+
+The critical discipline: **if you enable this and don't configure alerts, you gain nothing**. AR scanning without a notification path is a passive log nobody reads. Wire the Pub/Sub topic to your incident management or Slack channel before you consider this step complete.
+
+#### IaC scanning with tfsec and Checkov
+
+Add IaC scanning to your Terraform workflow. tfsec runs fast as the CI gate; Checkov runs the deeper policy pass:
+
+```bash
+# Install tfsec
+curl -sSfL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 \
+  -o /usr/local/bin/tfsec && chmod +x /usr/local/bin/tfsec
+
+# Install Checkov
+pip install checkov --break-system-packages
+
+# Run tfsec on your Terraform directory
+tfsec ./terraform/ --minimum-severity HIGH
+
+# Run Checkov across all IaC: Terraform + Kubernetes manifests + Dockerfiles
+checkov -d . \
+  --framework terraform,kubernetes,dockerfile \
+  --compact \
+  --quiet
+```
+
+Checkov will flag issues like these in your GKE Terraform config:
+
+```
+Check: CKV_GCP_69: "Ensure Kubernetes Cluster is not publicly accessible via master_authorized_networks_config"
+FAILED for resource: google_container_cluster.agents
+File: terraform/gke.tf:12-45
+
+Check: CKV_GCP_24: "Ensure PodSecurityPolicy is enabled on Kubernetes Engine Clusters"
+FAILED for resource: google_container_cluster.agents
+File: terraform/gke.tf:12-45
+```
+
+Each finding links to a remediation guide. Fix them in code, commit — the policy is now enforced in version control rather than in someone's memory.
+
+Add to your Terraform CI pipeline:
+
+```yaml
+# In your Terraform CI (Cloud Build or GitLab CI):
+  - name: 'aquasec/tfsec'
+    args: ['--minimum-severity', 'HIGH', '/workspace/terraform/']
+
+  - name: 'bridgecrew/checkov'
+    args:
+      - '-d'
+      - '/workspace'
+      - '--framework'
+      - 'terraform,kubernetes,dockerfile'
+      - '--soft-fail'    # warn in Tier 2; change to hard fail in Tier 3
+      - '--output'
+      - 'sarif'
+      - '--output-file-path'
+      - '/workspace/checkov-results.sarif'
+```
+
+#### Install OPA Gatekeeper on GKE
+
+```bash
+# Install Gatekeeper via Helm
+helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts
+helm repo update
+
+helm install gatekeeper gatekeeper/gatekeeper \
+  --namespace gatekeeper-system \
+  --create-namespace \
+  --set replicas=2
+
+# Verify installation
+kubectl get pods -n gatekeeper-system
+```
+
+#### Write a ConstraintTemplate: enforce registry pinning and digest references
+
+An important clarification before we write the policy: **Gatekeeper cannot verify Cosign signatures directly**. Verifying a cryptographic signature at admission time requires calling out to an external registry — something a standard Rego policy cannot do. What Gatekeeper *can* enforce is the two preconditions that make signature verification meaningful: that images come from your controlled registry (not Docker Hub or any unknown source), and that they are referenced by immutable digest rather than a mutable tag.
+
+Actual Cosign signature enforcement at the cluster level is what Tier 3's **Binary Authorization** provides. Tier 2 gives you registry pinning in Gatekeeper plus keyless signing in CI — the full cryptographic enforcement gate is Tier 3.
+
+With that said, registry pinning is itself a valuable control. An image from outside your registry cannot have been signed by your pipeline, so enforcing the registry is a necessary prerequisite for any signature policy.
+
+First, define the template (the reusable policy logic in Rego):
+
+```yaml
+# constraint-template-require-registry.yaml
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequireapprovedregistry
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequireApprovedRegistry
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequireapprovedregistry
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          image := container.image
+
+          # Block images from outside the approved Artifact Registry
+          not startswith(image, "us-central1-docker.pkg.dev/my-project/")
+
+          msg := sprintf("Image '%v' is not from the approved registry", [image])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          image := container.image
+
+          # Require image digest — tags are mutable, digests are not
+          # This ensures you are deploying exactly what was scanned and signed
+          not contains(image, "@sha256:")
+
+          msg := sprintf("Image '%v' must be referenced by digest, not tag", [image])
+        }
+```
+
+Then apply the constraint — which namespaces it applies to and what it matches:
+
+```yaml
+# constraint-require-registry.yaml
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequireApprovedRegistry
+metadata:
+  name: require-approved-registry
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces: ["agents", "production"]
+  enforcementAction: deny    # Use "warn" first while rolling out
+```
+
+```bash
+kubectl apply -f constraint-template-require-registry.yaml
+kubectl apply -f constraint-require-registry.yaml
+
+# Test: try to deploy an image from outside your registry
+kubectl run test --image=nginx:latest -n agents
+# Error from server: admission webhook "validation.gatekeeper.sh" denied the request:
+# Image 'nginx:latest' is not from the approved registry
+
+# Test: try to deploy using a mutable tag instead of a digest
+kubectl run test --image=us-central1-docker.pkg.dev/my-project/agents/orchestrator:latest -n agents
+# Error from server: Image must be referenced by digest, not tag
+```
+
+Switch `enforcementAction: warn` to `deny` only after you have confirmed that all legitimate workloads pass. Gatekeeper logs all violations regardless — use `kubectl get events -n gatekeeper-system` to monitor during rollout.
+
+---
+
+### 5.3 — Tier 3: Full Attestation Chain
+
+Tier 3 replaces advisory scanning and optional enforcement with a cryptographic chain of trust: no image can run on GKE unless Cloud Build has attested that it passed all security checks. The enforcement is at the platform level — no one can bypass it by applying a manifest directly.
+
+#### Binary Authorization on GKE
+
+Binary Authorization is a GCP-native admission control system that evaluates a **policy** at deploy time. The policy can require that an image has been attested by a specific Cloud Build job.
+
+Before creating an attestor, we must create a **Container Analysis Note**. This note is the metadata store where your pipeline's attestation occurrences will be recorded. Since we manage our infrastructure with Terraform, we define it declaratively:
+
+```hcl
+# terraform/security.tf
+resource "google_container_analysis_note" "attestation_note" {
+  name = "cloud-build-attestation"
+  
+  attestation_authority {
+    hint {
+      human_readable_name = "Cloud Build Attestation Authority"
+    }
+  }
+}
+```
+
+We also need to grant the Cloud Build service account permissions to attach attestations to this note:
+
+```hcl
+resource "google_container_analysis_note_iam_member" "cloud_build_attacher" {
+  note   = google_container_analysis_note.attestation_note.name
+  role   = "roles/containeranalysis.notes.attacher"
+  member = "serviceAccount:cloud-build@${var.project_id}.iam.gserviceaccount.com"
+}
+```
+
+Enable Binary Authorization on your GKE cluster:
+
+```bash
+gcloud container clusters update agents-cluster \
+  --region us-central1 \
+  --enable-binauthz
+```
+
+Create an attestor — the entity whose signature the policy trusts:
+
+```bash
+# Create a note in Container Analysis (the attestation record store)
+gcloud container binauthz attestors create cloud-build-attestor \
+  --attestation-authority-note=projects/my-project/notes/cloud-build-attestation \
+  --attestation-authority-note-project=my-project
+
+# Add the Cloud Build service account as a verifier
+gcloud container binauthz attestors public-keys add \
+  --attestor=cloud-build-attestor \
+  --pkix-public-key-file=cosign.pub \
+  --pkix-public-key-algorithm=ecdsa-p256-sha256
+```
+
+Define the Binary Authorization policy:
+
+```yaml
+# binauthz-policy.yaml
+defaultAdmissionRule:
+  enforcementMode: ENFORCED_BLOCK_AND_AUDIT_LOG
+  evaluationMode: REQUIRE_ATTESTATION
+  requireAttestationsBy:
+    - projects/my-project/attestors/cloud-build-attestor
+
+clusterAdmissionRules:
+  us-central1.agents-cluster:
+    enforcementMode: ENFORCED_BLOCK_AND_AUDIT_LOG
+    evaluationMode: REQUIRE_ATTESTATION
+    requireAttestationsBy:
+      - projects/my-project/attestors/cloud-build-attestor
+```
+
+```bash
+gcloud container binauthz policy import binauthz-policy.yaml
+```
+
+Now *no* image can be deployed to the GKE cluster unless it carries an attestation from your `cloud-build-attestor`. Images built locally, images pulled from Docker Hub, images pushed directly — all blocked.
+
+#### Full Tier 3 Cloud Build pipeline
+
+This is the complete secure pipeline. Every stage is a gate:
+
+```yaml
+# cloudbuild.yaml — Tier 3: Full attestation chain
+steps:
+  # 1. Run tfsec on Terraform (if IaC changed)
+  - name: 'aquasec/tfsec'
+    args: ['--minimum-severity', 'HIGH', '/workspace/terraform/']
+    id: 'iac-tfsec'
+
+  # 2. Run Checkov across all IaC and manifests
+  - name: 'bridgecrew/checkov'
+    args: ['-d', '/workspace', '--framework', 'terraform,kubernetes,dockerfile', '--compact']
+    id: 'iac-checkov'
+    waitFor: ['iac-tfsec']
+
+  # 3. Build the agent image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '$_IMAGE_TAG', '-f', 'agents/orchestrator/Dockerfile', '.']
+    id: 'build'
+    waitFor: ['iac-checkov']
+
+  # 4. Generate CycloneDX SBOM with syft
+  - name: 'anchore/syft'
+    args: ['$_IMAGE_TAG', '-o', 'cyclonedx-json', '--file', '/workspace/sbom.json']
+    id: 'sbom'
+    waitFor: ['build']
+
+  # 5. Scan SBOM with Grype — hard fail on CRITICAL or HIGH
+  - name: 'anchore/grype'
+    args: ['sbom:/workspace/sbom.json', '--fail-on', 'high']
+    id: 'scan'
+    waitFor: ['sbom']
+
+  # 6. Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '$_IMAGE_TAG']
+    id: 'push'
+    waitFor: ['scan']
+
+  # 7. Attach SBOM as OCI artifact
+  - name: 'gcr.io/projectsigstore/cosign'
+    args: ['attach', 'sbom', '--sbom', '/workspace/sbom.json', '--type', 'cyclonedx', '$_IMAGE_TAG']
+    id: 'attach-sbom'
+    waitFor: ['push']
+
+  # 8. Sign image with keyless Cosign (Cloud Build OIDC identity)
+  - name: 'gcr.io/projectsigstore/cosign'
+    args: ['sign', '--oidc-provider=google', '$_IMAGE_TAG']
+    env: ['COSIGN_EXPERIMENTAL=1']
+    id: 'sign'
+    waitFor: ['attach-sbom']
+
+  # 9. Create Binary Authorization attestation
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+          IMAGE_DIGEST=$(gcloud container images describe $_IMAGE_TAG --format='get(image_summary.digest)')
+          gcloud container binauthz attestations create \
+            --artifact-url="$_IMAGE_BASE@$$IMAGE_DIGEST" \
+            --attestor=projects/$PROJECT_ID/attestors/cloud-build-attestor \
+            --signature-algorithm=ECDSA_P256_SHA256 \
+            --public-key-id-override=$_COSIGN_KEY_ID
+    id: 'attest'
+    waitFor: ['sign']
+
+substitutions:
+  _IMAGE_TAG: 'us-central1-docker.pkg.dev/my-project/agents/orchestrator:$SHORT_SHA'
+  _IMAGE_BASE: 'us-central1-docker.pkg.dev/my-project/agents/orchestrator'
+  _COSIGN_KEY_ID: 'projects/my-project/locations/global/keyRings/cosign/cryptoKeys/signing-key'
+```
+
+If *any* step fails, the pipeline stops. No attestation means no deployment. The enforcement is not advisory — it is architectural.
+
+#### Renovate for automated dependency hygiene
+
+Add a `renovate.json` to the repository to automate dependency updates:
+
+```json
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:base"],
+  "packageRules": [
+    {
+      "matchPackagePatterns": ["*"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "matchPackagePatterns": ["google-adk", "google-cloud-*"],
+      "reviewers": ["@vitaliy"],
+      "labels": ["ai-dependencies"]
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"]
+  },
+  "prCreation": "immediate",
+  "timezone": "Europe/Kyiv"
+}
+```
+
+With `vulnerabilityAlerts` enabled, Renovate opens a PR automatically when a dependency in `requirements.txt` has a known CVE — before you find out about it from a scanner.
+
+---
+
+## 6. Operational Discipline: Living with an SBOM
+
+The tooling is straightforward. The discipline is harder.
+
+### CVE triage: not every finding is a fire
+
+A Grype scan of a production AI agent image will likely return dozens of findings — many of them HIGH or CRITICAL severity. The instinct is to treat every one as an emergency. The correct response is structured triage.
+
+Three questions determine priority:
+
+**Is there a fix?** Check the `FIXED-IN` column in Grype's output. If the vulnerability has no fix in any available version, you cannot patch it today regardless of severity. Document it, monitor it, and move on.
+
+**Is the vulnerable code path reachable?** A CRITICAL CVE in a compression library matters very differently depending on whether your agent ever decompresses untrusted user-provided data. If the vulnerable code path is never executed in your application's context, the practical risk is far lower than the CVSS score implies. This is called **reachability analysis** — some tools (like Grype with SBOM enrichment) can assist, but engineering judgement is irreplaceable.
+
+**What is the exposure?** A vulnerability in a package that only runs inside a private GKE cluster behind Workload Identity and a VPC Service Control perimeter is exposed to a different threat model than the same vulnerability in a package that processes user-uploaded files. Context is everything.
+
+Document your triage decisions. Not for auditors — for yourself, six months from now when someone asks why you didn't fix CVE-2024-XXXXX immediately.
+
+### SBOM as incident response
+
+When a critical vulnerability is disclosed, the first question is always: *are we affected?*
+
+With an SBOM pipeline in place, that question has a programmatic answer:
+
+```bash
+# When the next Log4Shell-equivalent drops for a Python package:
+# Query all stored SBOMs across all agent images for a specific package
+
+for sbom in ./sboms/*.json; do
+  echo "=== $sbom ==="
+  cat "$sbom" | jq --arg pkg "vulnerable-package-name" \
+    '.components[] | select(.name == $pkg) | {name, version, image: input_filename}'
+done
+```
+
+This query runs in seconds. Without SBOMs, the same question requires manually inspecting every running image, checking every `requirements.txt`, and hoping developers remember what they installed.
+
+### The metric that matters: Mean Time to Patch
+
+Put this on your engineering dashboard:
+
+**Mean Time to Patch a Known CVE (MTTP)** — the average time between a CVE being published and a fixed version being deployed to production.
+
+Most teams don't measure this. Teams that do discover their MTTP is measured in weeks or months. With Renovate opening PRs automatically, Grype blocking builds with unpatched CRITICAL CVEs, and Binary Authorization enforcing deployment gates, your MTTP can drop to days.
+
+MTTP is a leading indicator of supply chain health. It's the metric your security posture should be optimized for.
+
+---
+
+## 7. What We Built
+
+Starting from a real GCP AI agent architecture, we constructed a four-layer supply chain security posture that scales from a solo developer to an enterprise team:
+
+**Tier 1** — syft generates a CycloneDX SBOM of every component in every agent image. Grype scans it and fails the build on critical vulnerabilities. Cosign signs the image with a KMS-backed key. Artifact Registry scans automatically on push.
+
+**Tier 2** — Cosign keyless signing via Cloud Build's OIDC identity eliminates key management entirely. The SBOM travels with the image as an OCI artifact in Artifact Registry. OPA Gatekeeper enforces that only images from the approved registry, referenced by digest, can run on GKE. tfsec and Checkov catch infrastructure misconfigurations before `terraform apply`.
+
+**Tier 3** — Binary Authorization requires a Cloud Build attestation before any image can run in the cluster. No local builds, no Docker Hub pulls, no manual overrides. Checkov outputs SARIF to Security Command Center for a unified view. Renovate automates dependency hygiene continuously.
+
+In each case, the tooling is in service of a single principle: **trust nothing that hasn't been verified, and automate the verification so humans are never the weak link.**
+
+---
+
+## Next Up: Part 2 — AI-Specific Threats
+
+Supply chain security secures the *infrastructure*. But the AI agents running on that infrastructure have an attack surface that container scanners and Gatekeeper policies were never designed to address.
+
+In **Part 2**, we will cover the threats unique to AI systems: **prompt injection** (user input that hijacks agent reasoning and causes the agent to act against its operator's intent), **model poisoning** (compromised training data or fine-tuning pipelines that embed backdoors in model weights), **A2A trust** (how agents verify the identity of other agents they communicate with over the A2A protocol, and what happens when that trust is broken), and **data pipeline integrity** (ensuring that the AlloyDB records feeding context into your agents haven't been tampered with by an adversary who learned that poisoning the context window is easier than breaking the encryption).
+
+The supply chain is secure. The agents themselves are next.
+
+---
+
+*Published on [d3ep0ps.com](https://d3ep0ps.com) — From the Command Line to Intelligent Systems.*
