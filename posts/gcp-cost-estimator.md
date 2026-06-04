@@ -35,7 +35,7 @@ This is not an AI product. It is a pricing engine that AI products can use.
 The division of labour is clean:
 
 ```
-User ──► MCP Host (LLM lives here) ──► GCP Billing MCP Server (no LLM)
+User ──► MCP Host (LLM lives here) ──► GCP Cost Estimator MCP Server (no LLM)
                                               │
                                      deterministic core
                                               │
@@ -170,7 +170,7 @@ The MCP server does the deterministic work — SKU lookups, unit conversions, pr
 
 This is what "depth over hype" looks like for AI tooling. Not a model that guesses your cloud bill. A pricing engine with a well-defined interface that an AI can use correctly, and that you can test, trust, and run entirely on your own machine.
 
-The project is on GitHub at [github.com/d3ep0ps/gcp-billing-mcp](https://github.com/d3ep0ps/gcp-billing-mcp). Tier 1 — Compute Engine, Cloud Storage, GKE, Cloud SQL, and BigQuery — is complete and tested. Tier 2 serverless coverage is next.
+The project is on GitHub at [github.com/d3ep0ps/gcp-cost-estimator](https://github.com/d3ep0ps/gcp-cost-estimator). Tier 1 — Compute Engine, Cloud Storage, GKE, Cloud SQL, and BigQuery — is complete and tested. Tier 2 serverless coverage is next.
 
 ---
 

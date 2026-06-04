@@ -35,7 +35,7 @@
 Розподіл праці чіткий:
 
 ```
-Користувач ──► MCP-хост (тут живе LLM) ──► GCP Billing MCP Server (без LLM)
+Користувач ──► MCP-хост (тут живе LLM) ──► GCP Cost Estimator MCP Server (без LLM)
                                                   │
                                          детерміноване ядро
                                                   │
@@ -170,7 +170,7 @@ MCP-сервер виконує детерміновану роботу — по
 
 Ось як виглядає принцип «глибина замість хайпу» (depth over hype) для інструментів штучного інтелекту. Не модель, яка вгадує ваш рахунок за хмару, а механізм тарифікації з чітко визначеним інтерфейсом, який ШІ може використовувати правильно, і який ви можете тестувати, довіряти йому та запускати повністю на власній машині.
 
-Проєкт опубліковано на GitHub: [github.com/d3ep0ps/gcp-billing-mcp](https://github.com/d3ep0ps/gcp-billing-mcp). Рівень Tier 1 — Compute Engine, Cloud Storage, GKE, Cloud SQL та BigQuery — завершено й протестовано. Наступним кроком є покриття serverless у Tier 2.
+Проєкт опубліковано на GitHub: [github.com/d3ep0ps/gcp-cost-estimator](https://github.com/d3ep0ps/gcp-cost-estimator). Рівень Tier 1 — Compute Engine, Cloud Storage, GKE, Cloud SQL та BigQuery — завершено й протестовано. Наступним кроком є покриття serverless у Tier 2.
 
 ---
 
