@@ -2,11 +2,13 @@
 
 > **"Sandboxing tells you where an agent can act. IAM tells you what it's allowed to touch. Neither one asks whether the agent should be doing this right now — and that gap is where prompt injection lives."**
 
-Picture the setup: a data-analysis agent running in a GKE Sandbox pod, kernel-isolated by gVisor. Its Workload Identity token is scoped to exactly two BigQuery datasets — nothing broader. A VPC Service Controls perimeter wraps every service it's allowed to touch. A gateway inspects every prompt going in and every response coming out. On your security dashboard, every box is checked. This is what "we did it right" looks like.
+Consider a support-triage agent running in a GKE Sandbox pod, isolated by gVisor. Its Workload Identity binding is scoped the way most of these end up scoped in practice — to "the support and billing datasets," because that's what the team who built it eight months ago decided it needed, and nobody has revisited it since. A VPC Service Controls perimeter wraps the project. Model Armor screens every prompt that reaches it.
 
-Then someone asks the agent to "pull together the annual report," and fifty thousand customer records leave through a storage bucket, a routine export job, and a downstream pipeline — all three things your team configured, all three working exactly as designed.
+A customer opens a ticket and pastes in an error log. Buried in that log — text the agent is supposed to read and summarize, the same as any other ticket — is a line instructing it to also compile the full billing history "for cross-reference" and attach the export as a link in the reply. The agent has never been told that dataset is off-limits, because technically it isn't: it's covered by the same grant as everything else this agent touches. The export goes out through a share-link feature the team built for exactly this purpose — handing customers their own invoices.
 
-No control failed. Nobody skipped a step. That's the part worth sitting with before you read any further.
+Sixty thousand other customers' billing records went out in that link. The sandbox held. The identity binding was valid. The perimeter didn't leak. Model Armor didn't see anything resembling an attack, because nothing about the request looked like one.
+
+That's the part worth sitting with before you read any further.
 
 ---
 
@@ -43,6 +45,8 @@ Every GCP compute option for hosting an agent trades operational control for con
 **Compute Engine VM.** No workload-level identity boundary by default. If the agent's service account uses the VM's attached identity rather than a scoped one, and nobody's disabled it, the agent inherits whatever the Compute Engine default service account can touch — often project Editor. No kernel-level isolation for anything the agent executes. This is the worst starting point and, anecdotally, still the most common for teams that "just want the agent running somewhere."
 
 **Cloud Run.** Better — a container per revision, a dedicated (ideally scoped) service account, and no shared node to worry about. But Cloud Run and Cloud Functions are the integration teams most often forget to place *inside* a VPC Service Controls perimeter. If your agent calls out through a Cloud Run service that sits outside the perimeter, that service becomes an escape hatch: a compromised agent routes data through an "allowed" Cloud Run invocation and walks straight past the boundary you thought you'd built.
+
+Closing that gap takes three settings together — no single flag does it. Ingress has to be locked to internal traffic only; leaving it at `all` silently disables VPC-SC enforcement for that service. Egress has to route all outbound traffic through your VPC network — Direct VPC egress (`--vpc-egress=all-traffic`), not the default path. And that VPC's subnets need Private Google Access enabled, with routing set up so calls to Google APIs resolve to the restricted VIP (`199.36.153.4/30`, `restricted.googleapis.com`) instead of the public internet. Skip that last piece and Direct VPC egress alone doesn't bring the service inside the perimeter — it just changes which network the traffic happens to travel through on its way out.
 
 **GKE.** This is where the controls get granular enough to matter, and where three primitives compound:
 
@@ -124,15 +128,18 @@ resource "google_model_armor_floorsetting" "org_floor" {
 
   enable_floor_setting_enforcement = true
 
-  # Governs enforcement specifically for Vertex AI / Gemini traffic;
-  # inspect_and_block, not inspect_only, is what makes this a gate
-  # rather than a logging pipeline.
+  # Governs enforcement for Vertex AI / Gemini traffic. Start here, not at
+  # inspect_and_block: inspect_only and inspect_and_block are independent
+  # fields, not one switch, and turning on org-wide blocking before you've
+  # measured your false-positive rate will break benign workloads on day one.
   ai_platform_floor_setting {
-    inspect_and_block    = true
+    inspect_only         = true
     enable_cloud_logging = true
   }
 }
 ```
+
+Run that in `inspect_only` for a couple of weeks, watch Cloud Logging for how often legitimate traffic trips the filter, tune the confidence level if needed, and only then flip `inspect_only` to `false` and `inspect_and_block` to `true`. This is the same staged rollout as the `Inspect only` → `Inspect and block` progression described above — the org-wide floor setting isn't exempt from it just because it's the baseline everyone inherits.
 
 Where Model Armor actually intercepts traffic depends on your architecture, and this matters for the blast-radius discussion above:
 
