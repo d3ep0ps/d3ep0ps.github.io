@@ -124,11 +124,19 @@ def require_human_confirmation(tool, args, tool_context):
 
 The controls above have real cost — registry onboarding is friction, human-in-the-loop is latency. Spend them where the trust actually thins out:
 
-| Peer tier | Example | Identity basis | Minimum controls | Residual risk you accept |
-|---|---|---|---|---|
-| Agents you build | Two agents in one GKE cluster | Workload Identity, same project | Per-agent SAs, network policy | A compromised agent inside your own perimeter |
-| Agents in your org | Another team's agent, same company | IAM principals, internal registry | Signed cards, scoped invoker roles, egress screening | Lateral movement across team boundaries |
-| Third-party / marketplace | Partner or vendor agent on the open A2A mesh | Signed cards from allowlisted issuers only | Everything above, plus HITL on all state changes and contractual security terms | Session-level manipulation; upstream compromise of a legitimate partner |
+```text
++---------------------------+--------------------------------+-----------------------------------+------------------------------------------+------------------------------------------------------+
+| Peer tier                 | Example                        | Identity basis                    | Minimum controls                         | Residual risk you accept                             |
++===========================+================================+===================================+==========================================+======================================================+
+| Agents you build          | Two agents in one GKE cluster  | Workload Identity, same project   | Per-agent SAs, network policy            | A compromised agent inside your own perimeter        |
++---------------------------+--------------------------------+-----------------------------------+------------------------------------------+------------------------------------------------------+
+| Agents in your org        | Another team's agent,          | IAM principals, internal registry | Signed cards, scoped invoker roles,      | Lateral movement across team boundaries              |
+|                           | same company                   |                                   | egress screening                         |                                                      |
++---------------------------+--------------------------------+-----------------------------------+------------------------------------------+------------------------------------------------------+
+| Third-party / marketplace | Partner or vendor agent on the | Signed cards from allowlisted     | Everything above, plus HITL on all state | Session-level manipulation; upstream compromise of a |
+|                           | open A2A mesh                  | issuers only                      | changes and contractual security terms   | legitimate partner                                   |
++---------------------------+--------------------------------+-----------------------------------+------------------------------------------+------------------------------------------------------+
+```
 
 The third column is the one to show your leadership: onboarding an external agent is vendor onboarding. If a partner can't tell you who signs their agent card, how they rotate the keys, and what their incident process is when *their* agent is compromised, that answer is itself the due-diligence result.
 
