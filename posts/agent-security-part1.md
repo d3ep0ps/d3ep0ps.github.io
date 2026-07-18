@@ -58,13 +58,17 @@ The trap here isn't any single layer — it's assuming these three add up to ful
 
 **Vertex AI Agent Engine / Gemini Enterprise Agent Platform (fully managed).** You give up direct control over the sandbox and the network boundary in exchange for Google managing them. That's a legitimate trade for many teams — but "managed" moves the isolation boundary out of your hands, not out of existence. In March 2026, Unit 42 published research ("Double Agents") showing that credentials obtained from within an AI agent's managed execution context could be used to pivot out of that context into the customer's own project, gaining unrestricted read access to every Cloud Storage bucket in it. The isolation between the platform's shared execution environment and the customer's project was the thing that failed — a boundary the customer had no way to audit or harden themselves, because it wasn't theirs to configure.
 
-| Runtime | Isolation for agent-generated code | Identity scoping | Who owns the boundary |
-|---|---|---|---|
-| Compute Engine VM | None by default | Often the VM's own SA (broad) | You, but usually unmanaged |
-| Cloud Run | Per-revision container | Per-service SA, easy to scope | You — but easy to leave outside VPC-SC |
-| GKE (Autopilot) | gVisor via Agent Sandbox, default-deny network | Workload Identity Federation, on by default | You, fully |
-| GKE (Standard) | gVisor via Agent Sandbox (opt-in) | Workload Identity Federation (must verify per node pool) | You, if configured correctly everywhere |
-| Vertex AI Agent Engine / Gemini Enterprise | Managed sandbox | Managed, plus your IAM bindings | Shared with Google — you can't inspect the tenant boundary |
+```text
++--------------------------------------------+------------------------------------------------+----------------------------------------------------------+------------------------------------------------------------+
+| Runtime                                    | Isolation for agent-generated code             | Identity scoping                                         | Who owns the boundary                                      |
++--------------------------------------------+------------------------------------------------+----------------------------------------------------------+------------------------------------------------------------+
+| Compute Engine VM                          | None by default                                | Often the VM's own SA (broad)                            | You, but usually unmanaged                                 |
+| Cloud Run                                  | Per-revision container                         | Per-service SA, easy to scope                            | You — but easy to leave outside VPC-SC                     |
+| GKE (Autopilot)                            | gVisor via Agent Sandbox, default-deny network | Workload Identity Federation, on by default              | You, fully                                                 |
+| GKE (Standard)                             | gVisor via Agent Sandbox (opt-in)              | Workload Identity Federation (must verify per node pool) | You, if configured correctly everywhere                    |
+| Vertex AI Agent Engine / Gemini Enterprise | Managed sandbox                                | Managed, plus your IAM bindings                          | Shared with Google — you can't inspect the tenant boundary |
++--------------------------------------------+------------------------------------------------+----------------------------------------------------------+------------------------------------------------------------+
+```
 
 The practical takeaway: GKE gives you the most levers, but every lever has to actually be pulled. A managed platform pulls them for you, but you're trusting a boundary you can't see into.
 
@@ -160,11 +164,15 @@ The Agent Development Kit treats security as part of the framework, not a filter
 
 The IAM mistake that erases all of this is the same one teams make with Binary Authorization: granting the broad role because it's the fast path. Google's own codelab for deploying agents on GKE grants `roles/aiplatform.user` at the **project** level — which lets the agent call inference on every endpoint in the project and enumerate every model. For a single-purpose agent, scope it down:
 
-| Agent needs | Overprivileged (project-level) | Correctly scoped (resource-level) |
-|---|---|---|
-| Call one inference endpoint | `roles/aiplatform.user` on the project | `roles/aiplatform.user` on that specific endpoint |
-| Read one BigQuery dataset | `roles/bigquery.dataViewer` on the project | `roles/bigquery.dataViewer` on that dataset |
-| Read one bucket | `roles/storage.objectViewer` on the project | `roles/storage.objectViewer` on that bucket |
+```text
++-----------------------------+---------------------------------------------+---------------------------------------------------+
+| Agent needs                 | Overprivileged (project-level)              | Correctly scoped (resource-level)                 |
++-----------------------------+---------------------------------------------+---------------------------------------------------+
+| Call one inference endpoint | `roles/aiplatform.user` on the project      | `roles/aiplatform.user` on that specific endpoint |
+| Read one BigQuery dataset   | `roles/bigquery.dataViewer` on the project  | `roles/bigquery.dataViewer` on that dataset       |
+| Read one bucket             | `roles/storage.objectViewer` on the project | `roles/storage.objectViewer` on that bucket       |
++-----------------------------+---------------------------------------------+---------------------------------------------------+
+```
 
 ```hcl
 # terraform/agent-identity.tf

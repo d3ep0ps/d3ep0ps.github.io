@@ -139,11 +139,15 @@ If a vendor tells you their platform "solves" model poisoning, ask them which di
 
 Three articles, three boundaries, one repeated lesson:
 
-| Boundary | The attack | What the standard control actually checks | What it cannot check |
-|---|---|---|---|
-| Content (Part 1) | Prompt injection | IAM: is the action *permitted*? | Whether the intent behind a permitted action changed |
-| Identity (Part 2) | Card spoofing, session smuggling | Auth: is the peer *who it claims*? | Whether a verified peer is compromised |
-| Artifact (Part 3) | Poisoned weights | Signing: is the file *from that origin, untampered*? | What the weights learned before signing |
+```text
++-------------------+----------------------------------+------------------------------------------------------+------------------------------------------------------+
+| Boundary          | The attack                       | What the standard control actually checks            | What it cannot check                                 |
++-------------------+----------------------------------+------------------------------------------------------+------------------------------------------------------+
+| Content (Part 1)  | Prompt injection                 | IAM: is the action *permitted*?                      | Whether the intent behind a permitted action changed |
+| Identity (Part 2) | Card spoofing, session smuggling | Auth: is the peer *who it claims*?                   | Whether a verified peer is compromised               |
+| Artifact (Part 3) | Poisoned weights                 | Signing: is the file *from that origin, untampered*? | What the weights learned before signing              |
++-------------------+----------------------------------+------------------------------------------------------+------------------------------------------------------+
+```
 
 Read down the right-hand column and the pattern is the same gap three times: our controls verify *facts about artifacts and identities*, while the attacks live in *behavior*. That isn't a reason to skip the controls — every one of them shrinks the space an attacker moves through, and most real incidents die against the boring layers. It's a reason to hold both ideas at once: verify everything you can verify, and design as if verification will not be enough — smallest permitted action set, one path to production, a human in front of anything irreversible, and eyes on runtime behavior.
 

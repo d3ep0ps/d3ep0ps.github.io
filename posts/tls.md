@@ -170,14 +170,18 @@ Let's Encrypt certificates are valid for **90 days**. This is a deliberate secur
 
 ### Comparison at a Glance
 
-| | Self-Signed | Commercial DV | Let's Encrypt | Commercial OV/EV |
-|---|---|---|---|---|
-| **Cost** | Free | $10–$200/yr | Free | $100–$1000+/yr |
-| **Browser trust** | ❌ (warning) | ✅ | ✅ | ✅ |
-| **Automation** | Manual | Manual/API | Fully automated | API (varies) |
-| **Validity** | Any | 1 year | 90 days | 1–2 years |
-| **Identity verified** | None | Domain only | Domain only | Domain + Org |
-| **Best for** | Internal/Dev | Legacy systems | Everything public | Finance/Compliance |
+```text
++-----------------------+--------------+----------------+-------------------+--------------------+
+|                       | Self-Signed  | Commercial DV  | Let's Encrypt     | Commercial OV/EV   |
++-----------------------+--------------+----------------+-------------------+--------------------+
+| **Cost**              | Free         | $10–$200/yr    | Free              | $100–$1000+/yr     |
+| **Browser trust**     | ❌ (warning)  | ✅              | ✅                 | ✅                  |
+| **Automation**        | Manual       | Manual/API     | Fully automated   | API (varies)       |
+| **Validity**          | Any          | 1 year         | 90 days           | 1–2 years          |
+| **Identity verified** | None         | Domain only    | Domain only       | Domain + Org       |
+| **Best for**          | Internal/Dev | Legacy systems | Everything public | Finance/Compliance |
++-----------------------+--------------+----------------+-------------------+--------------------+
+```
 
 ---
 
@@ -207,13 +211,17 @@ Mail is where TLS gets confusing, because there are two distinct mechanisms and 
 
 **Implicit TLS** (sometimes called "TLS-wrapped" or "SMTPS/IMAPS") starts TLS immediately, before any protocol commands are exchanged. This is the modern preferred approach.
 
-| Port | Protocol | TLS Method | Used For |
-|---|---|---|---|
-| 25 | SMTP | STARTTLS | Server-to-server relay |
-| 465 | SMTPS | Implicit TLS | Client submission (legacy, now preferred) |
-| 587 | SMTP Submission | STARTTLS | Client submission |
-| 993 | IMAPS | Implicit TLS | IMAP client access |
-| 995 | POP3S | Implicit TLS | POP3 client access |
+```text
++------+-----------------+--------------+-------------------------------------------+
+| Port | Protocol        | TLS Method   | Used For                                  |
++------+-----------------+--------------+-------------------------------------------+
+| 25   | SMTP            | STARTTLS     | Server-to-server relay                    |
+| 465  | SMTPS           | Implicit TLS | Client submission (legacy, now preferred) |
+| 587  | SMTP Submission | STARTTLS     | Client submission                         |
+| 993  | IMAPS           | Implicit TLS | IMAP client access                        |
+| 995  | POP3S           | Implicit TLS | POP3 client access                        |
++------+-----------------+--------------+-------------------------------------------+
+```
 
 We configured both Postfix and Dovecot in the **Mail Server** article. In Section 5.2 below, we will add proper TLS to that stack.
 
@@ -649,13 +657,17 @@ GCP will provision a Google-managed certificate and route HTTPS traffic to your 
 
 **When to use which approach:**
 
-| Scenario | Recommended Approach |
-|---|---|
-| GKE + nginx Ingress controller | cert-manager + Let's Encrypt |
-| GKE + GCE Ingress (Cloud Load Balancer) | Google-managed certificates |
-| Cloud Run with custom domain | GCP automatic (domain mapping) |
-| Multi-cloud or on-premise Kubernetes | cert-manager + Let's Encrypt |
-| Internal services, mTLS between pods | cert-manager with self-signed ClusterIssuer |
+```text
++-----------------------------------------+---------------------------------------------+
+| Scenario                                | Recommended Approach                        |
++-----------------------------------------+---------------------------------------------+
+| GKE + nginx Ingress controller          | cert-manager + Let's Encrypt                |
+| GKE + GCE Ingress (Cloud Load Balancer) | Google-managed certificates                 |
+| Cloud Run with custom domain            | GCP automatic (domain mapping)              |
+| Multi-cloud or on-premise Kubernetes    | cert-manager + Let's Encrypt                |
+| Internal services, mTLS between pods    | cert-manager with self-signed ClusterIssuer |
++-----------------------------------------+---------------------------------------------+
+```
 
 The decision comes down to control versus simplicity. cert-manager is more portable, more configurable (supports DNS-01 challenges, wildcard certs, custom CAs), and works identically on any Kubernetes cluster. Google-managed certificates require zero operational knowledge but tie you to GCP's ingress implementation.
 
