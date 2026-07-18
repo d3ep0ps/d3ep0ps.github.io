@@ -12,7 +12,7 @@ In the **Security as Code: AI Agent Security** series, we walked three boundarie
 
 *What can it reach? Who can talk to it? Where did the model come from?*
 
-This article turns those three questions into an assessment you can run against your own platform in a day — fifteen checks, each with a concrete verification step, and a scoring model blunt enough to put in front of your CTO. Where a check maps to a risk in the [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) (ASI), I cite the ID — if you need to justify this work to an auditor or a board, that mapping is your paper trail.
+This article turns those three questions into an assessment you can run against your own platform in a day — seventeen checks, each with a concrete verification step, and a scoring model blunt enough to put in front of your CTO. Where a check maps to a risk in the [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) (ASI), I cite the ID — if you need to justify this work to an auditor or a board, that mapping is your paper trail.
 
 Everything below assumes GCP, because that's where this series lives. The structure — three boundaries, three evidence tiers — transfers to any cloud; only the verification commands are Google's.
 
@@ -38,9 +38,9 @@ One instruction before you start: **answer every check with a link to code or a 
 
 ## 2. Boundary 1 — Reach: what can the agent touch when it's tricked?
 
-*Covers OWASP ASI01 (Agent Goal Hijack), ASI02 (Tool Misuse and Exploitation), ASI05 (Unexpected Code Execution).*
+*Covers OWASP ASI01 (Agent Goal Hijack), ASI02 (Tool Misuse and Exploitation), ASI05 (Unexpected Code Execution), ASI08 (Insecure or Inefficient Resource Limits).*
 
-Part 1's premise: you cannot reliably stop a model from being tricked, so the real variable is what a tricked model can reach. These five checks measure that.
+Part 1's premise: you cannot reliably stop a model from being tricked, so the real variable is what a tricked model can reach. These six checks measure that.
 
 **R1 — Does any agent run as a default service account?**
 The Compute Engine default service account often carries project Editor. An agent inheriting it means a successful injection inherits it too.
@@ -103,11 +103,27 @@ gcloud model-armor floorsettings describe \
 
 No floor setting means every team is one deadline away from shipping an unscreened agent.
 
+**R6 — Does the platform enforce runaway execution and token consumption limits?**
+An injected agent can loop, consume tokens, exhaust resources, or run up catastrophic bills. The control is a platform-level constraint on execution duration, max step count, and resource quotas that individual workloads cannot override.
+*Verify:*
+
+```bash
+# Check GKE resource limits for the agent execution namespace
+kubectl get limitrange -n $AGENT_NS -o yaml
+
+# Check Vertex AI Reasoning Engine step/validation schemas
+curl -s -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  "https://${LOCATION}-aiplatform.googleapis.com/v1beta1/projects/${PROJECT}/locations/${LOCATION}/reasoningEngines" \
+  | jq -r '.reasoningEngines[].spec.templates[] | select(.validationSchema != null)'
+```
+
+If agents can run indefinitely without resource limits or step caps, you are one malicious prompt or infinite loop away from denial of service.
+
 ## 3. Boundary 2 — Identity: who can talk to the agent, and as whom does it act?
 
 *Covers OWASP ASI03 (Identity and Privilege Abuse), ASI07 (Insecure Inter-Agent Communication), ASI10 (Rogue Agents).*
 
-Part 2's territory: the difference between *the agent's* identity and *the user's* identity, and what happens between agents. Five checks.
+Part 2's territory: the difference between *the agent's* identity and *the user's* identity, and what happens between agents. Six checks.
 
 **I1 — Can you list every agent identity on the platform?**
 An assessment of identities starts with an inventory of them. If agents share one SA "for now," you cannot attribute an action to an agent — which also means you cannot revoke one agent without breaking the rest.
@@ -164,6 +180,17 @@ A2A's AgentCard is a claim of identity. Part 2 covered card spoofing and session
 Every MCP server is a trust boundary: its tool descriptions enter your model's context, and Part 1 showed what a poisoned description can do. An MCP server nobody owns is a supply-chain component nobody patches.
 *Good looks like:* a registry (Agent Gateway / agent governance registry, or even a reviewed YAML in git) listing every MCP endpoint agents may reach, each with an owner; egress rules that block unlisted endpoints — that's what promotes this from Documented to Enforced.
 *Verify:* pick an MCP endpoint *not* on the list and confirm an agent pod cannot reach it.
+
+**I6 — Are execution and tool-call audit logs tamper-proof?**
+If a compromise occurs, the attacker's first move is to erase their tracks. Audit logs containing prompts, thoughts, and tool actions must be written directly to a resource that even project administrators cannot modify or delete.
+*Verify:*
+
+```bash
+gcloud logging buckets describe $BUCKET_ID --location=$LOCATION --project=$PROJECT \
+  --format="table(name, retentionDays, locked)"
+```
+
+A logging bucket that isn't locked (`locked: true` with a retention policy) is a Documented or Configured control, but it is not Enforced — an administrative account can still delete the logs.
 
 ## 4. Boundary 3 — Provenance: where did the model come from, and would you notice a swap?
 
@@ -227,13 +254,13 @@ Two properties make this scoring useful. It's *repeatable* — the same commands
 
 ## 6. What a perfect score does not tell you
 
-The honest asterisk, same as every part of this series: these fifteen checks verify *facts about artifacts, identities, and configuration*. The attacks live in *behavior*. A 3/3/3 platform still authorizes a permitted-but-hostile query with a valid token (Part 1's residual gap), still trusts a verified peer that has itself been compromised (Part 2's), and still serves a backdoored model whose signature is genuine (Part 3's).
+The honest asterisk, same as every part of this series: these seventeen checks verify *facts about artifacts, identities, and configuration*. The attacks live in *behavior*. A 3/3/3 platform still authorizes a permitted-but-hostile query with a valid token (Part 1's residual gap), still trusts a verified peer that has itself been compromised (Part 2's), and still serves a backdoored model whose signature is genuine (Part 3's).
 
 An assessment that claimed to close those gaps would be marketing. What this one does instead is narrower and more useful: it tells you whether the boundaries you *think* you have actually exist, at which evidence tier, with proof you can regenerate on demand. Most real incidents die against exactly these boring layers — and the gaps that remain are at least *known* gaps, which is what runtime behavioral monitoring (the next series on this blog) is for.
 
 ## 7. Run it
 
-The full assessment — all fifteen checks, the verification commands, and the scoring sheet — is on GitHub as a standalone repo: **[github.com/d3ep0ps/agent-security-assessment](https://github.com/d3ep0ps/agent-security-assessment)**. No form, no email gate. Clone it, run it against your platform, and keep the filled sheet in your repo next to the code it describes — that's the Enforced tier for the assessment itself.
+The full assessment — all seventeen checks, the verification commands, and the scoring sheet — is on GitHub as a standalone repo: **[github.com/d3ep0ps/agent-security-assessment](https://github.com/d3ep0ps/agent-security-assessment)**. No form, no email gate. Clone it, run it against your platform, and keep the filled sheet in your repo next to the code it describes — that's the Enforced tier for the assessment itself.
 
 If you run it and the three digits are lower than you'd like — or you'd rather have a second pair of eyes on the scoring before it goes in front of your leadership — this is the review I do with teams as a fixed-scope engagement. The contact is below; the first conversation costs nothing but the three digits.
 
