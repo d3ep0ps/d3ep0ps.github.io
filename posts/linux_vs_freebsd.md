@@ -123,7 +123,7 @@ On Windows or Linux, try **VirtualBox**, **VMware**, or **QEMU**.
 * FreeBSD: [freebsd.org/where](https://freebsd.org/where)
 * Ubuntu Server: [ubuntu.com/server](https://ubuntu.com/server)
 * Debian: [debian.org/distrib/netinst](https://debian.org/distrib/netinst)
-* Fedora Server: [fedoraproject.org/server/download](httpshttps://fedoraproject.org/server/download)
+* Fedora Server: [fedoraproject.org/server/download](https://fedoraproject.org/server/download)
 
 ## First Boot & First Commands
 Once installed, log in and meet your system:

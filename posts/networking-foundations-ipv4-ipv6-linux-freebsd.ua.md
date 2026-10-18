@@ -384,7 +384,7 @@ FreeBSD тримає конфігурацію централізованою і 
 ## Готові спробувати самі?
 Повна практична лабораторія до цієї статті — включаючи вправи з `ip` та `ifconfig` — доступна тут:
 
-👉 d3ep0ps Networking Foundations Lab on GitHub
+👉 [Лабораторія мережевих основ d3ep0ps на GitHub](https://github.com/d3ep0ps/d3ep0ps/tree/main/networking-lab)
 
 Ви знайдете:
 

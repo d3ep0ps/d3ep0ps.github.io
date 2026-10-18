@@ -2,7 +2,7 @@
 
 > **"An unsigned image in a registry is a promise with no witness. Keyless signing makes the build pipeline the witness."**
 
-In **Part 1** of this series, we looked at the **dependency iceberg** and built a local security audit loop: we resolved dependencies deterministically with `uv`, generated a CycloneDX SBOM using `syft`, and scanned for CVEs using `grype`. 
+In **[Part 1](#sbom-part1)** of this series, we looked at the **dependency iceberg** and built a local security audit loop: we resolved dependencies deterministically with `uv`, generated a CycloneDX SBOM using `syft`, and scanned for CVEs using `grype`. 
 
 Local checks are the first line of defense, but they depend on developer discipline. To scale this across a team and protect a production system, we must upgrade our posture to **Tier 2 (Production-Grade)**. 
 

@@ -384,7 +384,7 @@ Both are valid — it just depends on whether you value clarity or flexibility m
 ## Ready to Try It Yourself?
 The full hands-on lab for this article — including `ip` and `ifconfig` exercises — is available here:
 
-👉 d3ep0ps Networking Foundations Lab on GitHub
+👉 [d3ep0ps Networking Foundations Lab on GitHub](https://github.com/d3ep0ps/d3ep0ps/tree/main/networking-lab)
 
 You’ll find:
 

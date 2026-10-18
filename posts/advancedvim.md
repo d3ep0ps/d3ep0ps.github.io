@@ -84,8 +84,6 @@ The solution is **fuzzy finding**. Tools like **Telescope** (for Neovim) or **fz
 
 This turns repository navigation from a memory test into a muscle-memory reflex.
 
-## The Modern Toolchain: Neovim vs. Vim
-
 ## When NOT to Use Vim or Neovim
 
 A balanced perspective matters.  
@@ -96,6 +94,8 @@ If you are building a large application locally — React, Go microservices, Pyt
 
 Use the best tool for the job.  
 For system engineering, infrastructure, Kubernetes, Terraform, and automation — a terminal-first editor keeps you effective everywhere, including places where GUI tools cannot follow.
+
+## The Modern Toolchain: Neovim vs. Vim
 
 Vim remains the undisputed king of quick edits on remote servers. It is everywhere, and the basic muscle memory you learned in our first article will serve you forever.
 

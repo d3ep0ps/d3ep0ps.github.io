@@ -2,7 +2,7 @@
 
 > **"A policy that can be bypassed is a suggestion. Binary Authorization makes the build pipeline the only path to production."**
 
-In **Part 1** and **Part 2** of this series, we secured the developer loop (with `uv` and `syft`), set up continuous registry scanning, and configured **OPA Gatekeeper** to restrict deployments on GKE to registry-pinned, digest-referenced container images.
+In **[Part 1](#sbom-part1)** and **[Part 2](#sbom-part2)** of this series, we secured the developer loop (with `uv` and `syft`), set up continuous registry scanning, and configured **OPA Gatekeeper** to restrict deployments on GKE to registry-pinned, digest-referenced container images.
 
 However, even with these policies in place, how do you verify that the container image actually passed all security scans *before* it reached GKE? What if a signed image contains critical vulnerabilities but was pushed anyway?
 
