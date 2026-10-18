@@ -2,7 +2,7 @@
 
 > **"The unit prices are nearly identical. The decision isn't what you pay per hour — it's which hours you pay for, and who you pay when it breaks."**
 
-While you were evaluating agent platforms this spring, the price list changed underneath you. At Google Cloud Next '26, Vertex AI became the **Gemini Enterprise Agent Platform** — same services, new umbrella, no migration. Then the billing changes started landing: Agent Gateway usage became billable on **July 13, 2026**. Sessions and Memory Bank move onto the metered pricing structure on **September 1, 2026**. If your cost model was built on a June invoice, it's already wrong, and it gets wrong again in six weeks.
+While you were evaluating agent platforms this spring, the price list changed underneath you. At Google Cloud Next '26, Vertex AI became the **Gemini Enterprise Agent Platform** — same services, new umbrella, no migration. Then the billing changes started landing: Agent Gateway usage became billable on **July 13, 2026**. Sessions, Memory Bank, and the new Skill Registry moved onto metered pricing on **September 1, 2026**, and Semantic Governance Policy billing is announced for later this year. If your cost model was built on a June invoice, it has already been wrong twice.
 
 This article is a decision framework for the question every platform team on GCP is being asked right now: do we run our agents on the managed platform, or build our own runtime? It's written for the person who has to defend the answer — with numbers from Google's own pricing pages, every calculation shown, and the trade-offs stated plainly enough to survive a board meeting.
 
@@ -10,7 +10,7 @@ This article is a decision framework for the question every platform team on GCP
 
 This piece continues the thread from the **AI Agent Security** series and [The Agent Platform Security Assessment](#agent-platform-security-assessment): those articles asked *how do you verify the platform you have*; this one asks *which platform should you have*. The two questions meet at the end — the assessment is how you evaluate either answer.
 
-All prices below are us-central1, on-demand list prices, verified against Google's published pricing pages in July 2026. Links to every source are in the References. Your region, discounts, and negotiated rates will differ; the *structure* of the math won't.
+All prices below are us-central1, on-demand list prices, verified against Google's published pricing pages in October 2026. Links to every source are in the References. Your region, discounts, and negotiated rates will differ; the *structure* of the math won't.
 
 ## 1. "Build vs buy" is the wrong question
 
@@ -31,7 +31,7 @@ So the honest question is not "build or buy" but **"which layer do we want to ow
 | You deploy | ADK/framework code | Containers you build | Containers + cluster config |
 | Sessions & memory | Managed (Sessions, Memory Bank) | You build or bring | You build or bring |
 | Code-execution sandbox | Managed | You configure | Agent Sandbox (gVisor), you configure |
-| Agent identity | IAM agent identity (SPIFFE, cert-bound tokens) | Per-service service accounts | Workload Identity per pod |
+| Agent identity | IAM agent identity (SPIFFE, cert-bound tokens) | IAM agent identity, or per-service service accounts | Workload Identity per pod |
 | Governance | Agent Registry, Gateway, policies | You assemble | You assemble |
 | Isolation boundary owner | Google (you can't inspect it) | Google (per-revision containers) | You, fully |
 | Ops load | Minimal | Low | A platform team's job |
@@ -42,13 +42,20 @@ One deliberate omission: a Compute Engine VM is not on this list. [Part 1](#agen
 
 Here is the fact that reframes the cost conversation. The managed premium on paper is almost zero:
 
-- **Agent Engine:** $0.085 per vCPU-hour, $0.009 per GiB-hour. Billed per second, and **idle time between turns is not billed**. Free tier: 50 vCPU-hours and 100 GiB-hours per month.
-- **Cloud Run (request-based):** $0.000024 per vCPU-second active — which is **$0.0864 per vCPU-hour**, within 2% of Agent Engine. Billed only while handling requests; warm min-instances idle at about a tenth of the active rate. 2M requests/month free.
+- **Agent Engine:** $0.085 per vCPU-hour, $0.009 per GiB-hour. Billed per second, and **idle time between turns is not billed**. Free tier: 50 vCPU-hours and 100 GiB-hours per month. Committed-use pricing exists too: $0.0765 / $0.068 per vCPU-hour and $0.0081 / $0.0072 per GiB-hour for 1-year / 3-year commitments.
+- **Cloud Run (request-based):** $0.000024 per vCPU-second active — which is **$0.0864 per vCPU-hour**, within 2% of Agent Engine. Billed only while handling requests; warm min-instances idle at about a tenth of the active rate. Free tier: 180,000 vCPU-seconds, 360,000 GiB-seconds, and 2M requests a month.
 - **GKE Autopilot:** $0.0445 per vCPU-hour and $0.0049 per GiB-hour — roughly **half** the managed rates — plus a flat $0.10/hour (~$73/month) cluster fee. But you're billed on **pod resource requests for as long as pods run**, not on active compute.
 
 That last distinction decides everything. Agent Engine and Cloud Run bill *activity*. Autopilot bills *provisioned capacity*. An agent is a bursty workload — it thinks in short spikes and waits for humans in between. On a platform that bills activity, the waiting is free. On a platform that bills capacity, the waiting is the bill.
 
-Add the two new line items to the managed side: Agent Gateway at 1 vCPU-hour ($0.085) per 15,000 API calls (billable since July 13), and from September 1, Sessions and Memory Bank at $0.30/GiB-month storage plus 1 vCPU-hour per 3 million read operations. Individually small; at high traffic they're the SKUs to watch, because nobody's June cost model contains them.
+Then add the new line items on the managed side:
+
+- **Agent Gateway** (since July 13): 1 vCPU-hour ($0.085) per 15,000 API calls or authorization requests.
+- **Sessions, Memory Bank, and Skill Registry** (since September 1): $0.30/GiB-month storage, 1 vCPU-hour per 3 million reads, and 1 vCPU-hour per 1 million writes.
+- **Memory Bank's model tokens:** generating memories and their embeddings is billed separately under the model SKUs. For a memory-heavy agent this, not storage, is the line that grows.
+- **Semantic Governance Policy** (announced for later in 2026): 1 vCPU-hour per 15,000 agent-model response evaluations, plus the evaluation model's tokens.
+
+Individually small; at high traffic they're the SKUs to watch, because nobody's June cost model contains them.
 
 ## 4. Three worked examples
 
@@ -59,7 +66,7 @@ Assumptions stated, arithmetic shown, all rates from the References. "Utilizatio
 | Architecture | Monthly cost | Why |
 |---|---|---|
 | Agent Engine | **$0** | Under the free tier (50 vCPU-h / 100 GiB-h) |
-| Cloud Run | **$0** | Under the free tier (240k vCPU-s) |
+| Cloud Run | **$0** | Under the free tier (180k vCPU-s, 360k GiB-s) |
 | GKE Autopilot | **~$113** | 1 vCPU + 2 GiB pod provisioned 24/7 ($40) + cluster fee ($73) |
 
 At small scale the comparison isn't close, and it isn't about rates — it's that the managed platforms don't bill waiting and the cluster does. (If this is your billing account's only cluster, the GKE free-tier credit covers the $73; the conclusion stands.)
@@ -69,7 +76,7 @@ At small scale the comparison isn't close, and it isn't about rates — it's tha
 | Architecture | Monthly cost | Why |
 |---|---|---|
 | Agent Engine | **~$201** | (2,000−50)×$0.085 + (4,000−100)×$0.009 |
-| Cloud Run | **~$202** | Same active seconds at $0.000024/vCPU-s; 600k requests — free |
+| Cloud Run | **~$204** | (7.2M−180k) vCPU-s × $0.000024 + (14.4M−360k) GiB-s × $0.0000025; 600k requests — free |
 | GKE Autopilot | **~$232–390** | Depends on average provisioned capacity (4–8 vCPU) against a 10-concurrent peak |
 
 Two thousand busy vCPU-hours sounds like the scale where owning the cluster pays. It isn't — because autoscaling never tracks a bursty load perfectly, and every provisioned-but-waiting pod-hour costs you the thing Agent Engine gives away free. At ~50% utilization, the managed platforms are cheaper at *any* scale. That sentence is the whole cost section for most readers.
@@ -79,12 +86,14 @@ Two thousand busy vCPU-hours sounds like the scale where owning the cluster pays
 | Architecture | Monthly cost | Why |
 |---|---|---|
 | Agent Engine | **~$3,002** | 29,150×$0.085 + 58,300×$0.009 |
+| Agent Engine, 1-year commit | **~$2,702** | 29,150×$0.0765 + 58,300×$0.0081 |
+| Agent Engine, 3-year commit | **~$2,402** | 29,150×$0.068 + 58,300×$0.0072 |
 | Cloud Run (instance-based) | **~$2,313** | $0.000018/vCPU-s for instance lifetime |
 | GKE Autopilot, on-demand | **~$1,660** | 29,200×$0.0445 + 58,400×$0.0049 + $73 |
 | GKE Autopilot, 3-year CUD | **~$946** | Committed-use rates $0.024475 / $0.0027 |
 | GKE Autopilot, Spot | **~$548** | Spot rates $0.0133 / $0.0015 — for interruptible agents only |
 
-Here the build case is real: 45% below Agent Engine at list, 69% with commitment, 82% on Spot for workloads that tolerate preemption. The general rule, derivable from the same pages: at 100% utilization the crossover sits near **1,500 vCPU-hours a month** — about two continuously-busy vCPUs. Every point of utilization you lose moves it up; at 50% it never arrives.
+Here the build case is real: 45% below Agent Engine at list. Compare commitment with commitment and the gap holds — GKE's 3-year rate is 61% below Agent Engine's 3-year rate ($946 vs $2,402). Spot takes it to 82% below list for workloads that tolerate preemption. The general rule, derivable from the same pages: at 100% utilization the crossover sits near **1,500 vCPU-hours a month** — about two continuously-busy vCPUs, and roughly the same with commitments on both sides. Every point of utilization you lose moves it up; at 50% it never arrives.
 
 Three tidy examples are a framework, not your infrastructure. To run this math against what you actually deploy, I maintain [gcp-cost-estimator](https://github.com/d3ep0ps/gcp-cost-estimator) — an open-source tool that parses your Terraform, consults a cached copy of GCP's published pricing data, and returns an itemized estimate. It runs locally, deterministically, with no LLM inferring rates and no infrastructure definition leaving your machine — the same principle as this article: numbers traceable to a published SKU, or no numbers at all.
 
@@ -94,9 +103,9 @@ Three tidy examples are a framework, not your infrastructure. To run this math a
 
 Price is the argument everyone has; control is the one that decides. Run the three architectures through the [three boundaries](https://github.com/d3ep0ps/agent-security-assessment) from the assessment:
 
-**Reach.** On GKE you own every layer: gVisor via Agent Sandbox, default-deny egress, Workload Identity per pod, Model Armor floors — each verifiable with the assessment's commands. On Agent Engine, isolation is managed; the Unit 42 "Double Agents" research covered in [Part 1](#agent-security-part1) showed what it means when the boundary that fails is one you couldn't audit. Buy means trusting a boundary you can't see into. That's not disqualifying — it's a risk you price, and the assessment tells you whether your own boundaries would score better.
+**Reach.** On GKE you own every layer: gVisor via Agent Sandbox, default-deny egress, Workload Identity per pod, Model Armor floors — each verifiable with the assessment's commands. On Agent Engine, isolation is managed. Unit 42's "Double Agents" research (March 2026, covered in [Part 1](#agent-security-part1)) showed what that can mean: the default service agent attached to deployed agents had broader permissions than most teams realized, and its credentials could be lifted through the metadata service and used against the customer's own storage. Google's recommended fix is to bring your own service account instead of running on the default — do that on day one. Buy means trusting defaults you didn't choose and a boundary you can't fully see into. That's not disqualifying — it's a risk you price, and the assessment tells you whether your own boundaries would score better.
 
-**Identity.** This one now favors buy, and recently: IAM agent identity — per-agent SPIFFE principals with certificate-bound tokens that can't be replayed outside their runtime — is an Agent Engine feature. On your own runtime the equivalent is Workload Identity plus a service mesh, which is Configured-tier at best for most teams, while agent identity is Enforced by construction.
+**Identity.** This one favors the managed runtimes: IAM agent identity — per-agent SPIFFE principals with certificate-bound tokens that can't be replayed outside their runtime — is supported on Agent Runtime, Gemini Enterprise, and Cloud Run. On GKE the equivalent is Workload Identity plus a service mesh, which is Configured-tier at best for most teams, while agent identity is Enforced by construction.
 
 **Provenance and the exit door.** The lock-in question deserves a ledger, not a feeling:
 
@@ -108,13 +117,13 @@ Price is the argument everyone has; control is the one that decides. Run the thr
 | Container images, MCP servers | Agent Gateway policies, semantic governance |
 | | Console observability and evaluation tooling |
 
-The pattern: Google open-sourced the layers you'd write anyway and kept the layers that accumulate state — and state is what compounds. Session history is replaceable. **Agent memory isn't**: from September 1 you'll pay to store it, it grows more valuable every month it operates, and before you commit years of it to Memory Bank, make your team demonstrate the export path — not read about it, run it. If the answer to "how do we leave with our memory" is a meeting, you already have your lock-in answer at Documented tier.
+The pattern: Google open-sourced the layers you'd write anyway and kept the layers that accumulate state — and state is what compounds. Session history is replaceable. **Agent memory isn't**: since September 1 you pay to store it (and, in model tokens, to generate it), it grows more valuable every month it operates, and before you commit years of it to Memory Bank, make your team demonstrate the export path — not read about it, run it. If the answer to "how do we leave with our memory" is a meeting, you already have your lock-in answer at Documented tier.
 
 ## 6. The decision, compressed
 
-**Buy (Agent Engine)** if your agents are bursty, human-facing, and under ~1,500 busy vCPU-hours a month; if you have no platform team to spare; if agent identity's credential guarantees matter to your auditors. Accept: an isolation boundary you can't inspect, and state accumulating behind a managed API.
+**Buy (Agent Engine)** if your agents are bursty, human-facing, and under ~1,500 busy vCPU-hours a month; if you have no platform team to spare; if agent identity's credential guarantees matter to your auditors. Accept: an isolation boundary you can't inspect, default service-agent permissions you must replace with your own, and state accumulating behind a managed API.
 
-**Middle (Cloud Run)** if you want activity-based billing with container control — you already run services there, and your agents are stateless enough to bring your own sessions. Accept: you've taken on the plumbing without gaining the cluster-level control that justifies it. This is a waypoint, not usually a destination.
+**Middle (Cloud Run)** if you want activity-based billing with container control — you already run services there, and your agents are stateless enough to bring your own sessions. With IAM agent identity now available on Cloud Run, you keep the identity guarantees too. Accept: you've taken on the session and memory plumbing without gaining full cluster-level control. It's a more credible destination than it was in the spring.
 
 **Build (GKE + Agent Sandbox)** if you have sustained high-utilization agent compute (several continuously-busy vCPUs and growing), an existing platform team, and workloads where Spot and CUDs apply. Accept: the ops line on the spreadsheet, and sole ownership of every boundary the assessment checks.
 
@@ -141,15 +150,18 @@ That's the standard worth holding any platform decision to — including the one
 **Official documentation**
 
 - [Gemini Enterprise Agent Platform](https://docs.cloud.google.com/gemini-enterprise-agent-platform) and the [rebrand announcement](https://cloud.google.com/blog/products/ai-machine-learning/introducing-gemini-enterprise-agent-platform)
-- [IAM agent identity](https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/runtime/agent-identity)
+- [IAM agent identity](https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/runtime/agent-identity) and the [agent identity overview](https://docs.cloud.google.com/iam/docs/agent-identity-overview) (supported runtimes)
+- [Unit 42: Double Agents — Vertex AI Agent Engine](https://unit42.paloaltonetworks.com/double-agents-vertex-ai/)
 - [Memory Bank](https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/memory-bank) and [Sessions](https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/sessions)
 - [GKE Agent Sandbox](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/machine-learning/agent-sandbox) and the [open-source announcement](https://cloud.google.com/blog/products/containers-kubernetes/bringing-you-agent-sandbox-on-gke-and-agent-substrate)
 - [Agent Development Kit (open source)](https://github.com/google/adk-python) · [A2A protocol](https://a2a-protocol.org)
 
 **Earlier in this series**
 
-- Security as Code: AI Agent Security — Prompt Injection (Part 1), A2A Authentication (Part 2), Model Poisoning (Part 3)
-- [The Agent Platform Security Assessment](https://github.com/d3ep0ps/agent-security-assessment)
+- [Security as Code: AI Agent Security — Part 1: Prompt Injection](#agent-security-part1)
+- [Security as Code: AI Agent Security — Part 2: A2A Authentication](#agent-security-part2)
+- [Security as Code: AI Agent Security — Part 3: Model Poisoning](#agent-security-part3)
+- [The Agent Platform Security Assessment](#agent-platform-security-assessment) and its [checklist repo](https://github.com/d3ep0ps/agent-security-assessment)
 
 ---
 

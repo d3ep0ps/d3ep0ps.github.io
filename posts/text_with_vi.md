@@ -159,7 +159,7 @@ p
 ```
 Don’t memorize everything at once. Focus on the rhythm — edit, move, save, quit. The rest will come naturally.
 
-#Why Not Just Use nano?
+## Why Not Just Use nano?
 `nano` is friendly, sure — but it’s not always there.
 
 On a stripped-down FreeBSD jail, a Docker container, or an embedded Linux router — you’ll almost never find it preinstalled.
@@ -170,7 +170,7 @@ So even if you prefer `vim`, learning `vi` is like learning the alphabet of Unix
 
 > If you know vi, you can fix anything — anywhere.
 
-ex and sed: The Hidden Layer Beneath
+### ex and sed: The Hidden Layer Beneath
 What’s happening when you type :%s/old/new/g in vi? That’s actually the ex editor at work — the non-visual ancestor of vi.
 
 You can run the same edit without opening the file using `sed`:

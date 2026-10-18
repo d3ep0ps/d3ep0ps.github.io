@@ -116,7 +116,7 @@ In a standard FAMP stack, your layout often looks like this automatically:
   * `zroot/usr/local` (Your installed apps)
   * `zroot/var/log` (Your logs)
   * `zroot/var/db/mysql` (Your database)
-  * `zroot/ust/home/d3ep0ps` (Your home directory)
+  * `zroot/usr/home/d3ep0ps` (Your home directory)
 
 **The Power of Datasets:**
 Because ZFS manages all of this, you can apply policies per dataset instantly:

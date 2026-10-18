@@ -20,9 +20,9 @@ We recently did a [deep dive into this topic on a webinar](https://www.youtube.c
 
 To understand MLOps, you need to accept a fundamental paradigm shift.
 
-In traditional development (Software Engineering):
+In traditional development (Software Engineering): `Code + Input = Output`
 
-In Machine Learning:
+In Machine Learning: `Code + Data + Hyperparameters = Model`
 
 If you change even one bit in the input data (Dataset), you get a different model. Git is great at versioning code, but it "chokes" on gigabytes of binary data. MLOps is a set of practices that allows us to version the **entire equation**, not just the code.
 

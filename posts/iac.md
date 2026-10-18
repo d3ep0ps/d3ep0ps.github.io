@@ -153,11 +153,6 @@ Because **Codified Infrastructure** brings calm.
   * **It enables recovery.** If a region fails or a laptop is stolen, you don’t panic. You pull the code, run the command, and wait.
   * **It allows experimentation.** You can spin up a copy of production, test a crazy idea, and destroy it for pennies.
 
-
-You are absolutely right. The logical flow must be: **Prerequisites (Download) -\> Clone -\> Execute**. And we cannot skip the Packer step since it's a key part of the "Golden Image" narrative.
-
-Here is the corrected **"Hands-on Lab"** section for the end of your Medium article. Replace the previous version with this one.
-
 -----
 
 ## 🧪 Hands-on Lab
