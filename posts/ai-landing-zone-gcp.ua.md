@@ -155,7 +155,7 @@ spec:
 
 `vertexai.allowedModels` — це обмеження, суть якого керівництво схоплює найшвидше (*«продакшен може викликати лише моделі, погоджені службою безпеки»*), і на якому інженерні команди найчастіше спотикаються, оскільки статичний список миттєво застаріває.
 
-Згадайте події останніх дванадцяти тижнів. Підтримка Gemini 2.5 Pro, Flash та Flash-Lite на Vertex AI припиняється не раніше **16 жовтня 2026 року**. За цей самий час у реліз-ноутках Agent Platform зафіксовано вихід у GA для Gemini 3.6 Flash і 3.5 Flash-Lite (21 липня), 3.7 Flash (13 серпня), 3.8 Flash (2 вересня) та Gemini 4 Argon (13 жовтня). Білий список, сформований у липні, у жовтні застаріє двічі: він досі дозволятиме модель, яку от-от виведуть з експлуатації, і блокуватиме нові моделі, на які прагнуть перейти команди.
+Згадайте події останніх дванадцяти тижнів. Згідно з офіційним графіком життєвого циклу Google, підтримка Gemini 2.5 Pro, Flash та Flash-Lite на Vertex AI та Agent Platform офіційно припиняється **20 жовтня 2026 року** (сьогодні). За цей самий час у реліз-ноутках платформи зафіксовано вихід Gemini 3.6 Flash і 3.5 Flash-Lite (21 липня), 3.7 Flash (13 серпня), 3.8 Flash (2 вересня) та Gemini 4 Argon (13 жовтня) — при цьому для Gemini 3.6 Flash виведення з експлуатації призначено вже на наступний місяць (19 листопада 2026 року). Білий список, сформований у липні, наприкінці жовтня застаріє двічі: він досі дозволятиме моделі, які вимикаються просто сьогодні, і блокуватиме нові GA-моделі, на які прагнуть перейти команди.
 
 Тому правила ведення allowlist мають описувати життєвий цикл, а не просто фіксувати ідентифікатори:
 
@@ -406,6 +406,31 @@ AI landing zone докорінно змінює саму постановку п
 
 ---
 
+### Післямова: як прибрати вхідний виняток із розділу 5 за допомогою Agent Gateway
+
+Після публікації найчастіше запитання стосувалося пастки з розділу 5. Gemini Enterprise викликає кастомні MCP-сервери з інфраструктури Google, а не з вашої VPC. Через це інструмент, який мав би бути суто внутрішнім, змушений приймати публічний вхідний трафік, що виводить вхідні виклики з-під захисту периметра VPC Service Controls.
+
+Відповідь у основній частині статті — локалізація ризику: виділений проєкт для MCP-інструментів Gemini Enterprise, право виклику Cloud Run (`roles/run.invoker`) лише для сервісного агента Discovery Engine, перевірка кожного виклику через Model Armor та окремі ідентичності для інструментів читання й запису. Це працює, але залишається задокументованим винятком.
+
+Тепер у документації Google з'явився спосіб прибрати цей виняток. Gemini Enterprise може маршрутизувати вихідні виклики до кастомних MCP-серверів через Agent Gateway замість звернення через інтернет:
+
+```text
+Gemini Enterprise → Agent Gateway → приватне мережеве приєднання (network attachment) у вашу VPC → MCP-сервер на Cloud Run із внутрішнім входом (internal ingress)
+```
+
+Доступними є лише інструменти, зареєстровані в Agent Registry, а IAP авторизує кожен виклик інструменту окремо. Сервісу більше не потрібен публічний вхід, тож потреба у винятку зникає. Повне налаштування описано в практичному посібнику Google: [Gemini Enterprise with Agent Gateway egress to a private custom MCP server](https://codelabs.developers.google.com/agw-ge-custom-mcp-egress-vpc-registry).
+
+Обмеження, які варто перевірити перед впровадженням:
+
+- **Регіони:** наразі підтримуються лише `us-central1` та `europe-west1`.
+- **Сертифікати:** кінцеві точки MCP все ще потребують публічно довіреного TLS-сертифіката, навіть під час роботи через приватний маршрут.
+- **Периметр:** у посібнику не налаштовується VPC Service Controls, тому сумісність цієї зв'язки з периметром потрібно протестувати у власному середовищі.
+- **Зрілість:** стадія релізу (launch stage) явно не вказана — перед використанням у промисловому середовищі уточніть статус General Availability (GA).
+
+Там, де ці обмеження не дозволяють використати новий маршрут, схема локалізації з розділу 5 залишається основним резервним варіантом.
+
+---
+
 ### Далі в серії
 
 Landing zone — це архітектурний дизайн. У наступній статті ми перетворимо його на готовий інфраструктурний код: набір модулів Terraform для розгортання AI landing zone поверх Cloud Foundation Fabric, де кожен негативний тест із цього матеріалу вбудовано як автоматичний гейт у CI-пайплайні.
@@ -420,6 +445,7 @@ Landing zone — це архітектурний дизайн. У наступн
 - [Перевизначення організаційної політики для сховищ Custom MCP](https://docs.cloud.google.com/gemini/enterprise/docs/connectors/custom-mcp-server/override-constraint-for-custom-mcp-data-stores)
 - [Налаштування дозволених джерел даних](https://docs.cloud.google.com/gemini/enterprise/docs/connectors/configure-allowed-data-sources) та [дозволених вихідних FQDN](https://docs.cloud.google.com/gemini/enterprise/docs/connectors/configure-allowed-egress-fqdns)
 - [Налаштування кастомного MCP-сервера в Gemini Enterprise](https://docs.cloud.google.com/gemini/enterprise/docs/connectors/custom-mcp-server/set-up-custom-mcp-server)
+- [Gemini Enterprise із виходом через Agent Gateway до приватного кастомного MCP-сервера (коделаб)](https://codelabs.developers.google.com/agw-ge-custom-mcp-egress-vpc-registry)
 - [CMEK у Gemini Enterprise](https://docs.cloud.google.com/gemini/enterprise/docs/cmek) та [VPC Service Controls для Gemini Enterprise](https://docs.cloud.google.com/gemini/enterprise/docs/use-vpc-service-controls)
 - [Огляд IAM agent identity](https://docs.cloud.google.com/iam/docs/agent-identity-overview) та [Context-Aware Access для агентів](https://docs.cloud.google.com/access-context-manager/docs/caa-agent-security)
 - [VPC Service Controls: підтримувані ідентичності](https://docs.cloud.google.com/vpc-service-controls/docs/supported-identities)

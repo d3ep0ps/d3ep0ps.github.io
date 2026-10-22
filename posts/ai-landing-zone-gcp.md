@@ -155,7 +155,7 @@ spec:
 
 `vertexai.allowedModels` is the constraint executives understand fastest — *"production can only call models Security approved"* — and the one teams get wrong fastest, because it goes stale.
 
-Consider the last twelve weeks. Gemini 2.5 Pro, Flash, and Flash-Lite reach end of life on Vertex AI no earlier than **October 16, 2026**. In the same window, Google's Agent Platform release notes record GA for Gemini 3.6 Flash and 3.5 Flash-Lite (July 21), 3.7 Flash (August 13), 3.8 Flash (September 2), and Gemini 4 Argon (October 13). An allowlist written in July is wrong twice by October: it still permits a model about to disappear, and it blocks the successors your teams want.
+Consider the last twelve weeks. According to Google's official model lifecycle schedule, Gemini 2.5 Pro, Flash, and Flash-Lite reach official retirement on Vertex AI and Agent Platform on **October 20, 2026** (today). In that same window, Google recorded releases for Gemini 3.6 Flash and 3.5 Flash-Lite (July 21), 3.7 Flash (August 13), 3.8 Flash (September 2), and Gemini 4 Argon (October 13) — while Gemini 3.6 Flash is already scheduled for retirement next month (November 19, 2026). An allowlist written in July is wrong twice by late October: it permits models that shut down today, and it blocks the GA successors your teams need.
 
 So the allowlist rules are about lifecycle, not IDs:
 
@@ -405,6 +405,31 @@ That's the difference between an organization that has AI agents and one that ca
 
 ---
 
+### Postscript: Closing the Section 5 Ingress Exception with Agent Gateway
+
+Since publishing, the question I’ve heard most is about the trap in section 5. Gemini Enterprise calls custom MCP servers from Google’s infrastructure, not from your VPC. So a tool that should be internal-only has to accept public ingress, which takes it outside VPC Service Controls enforcement for inbound calls.
+
+The article’s answer is containment: Gemini-facing tools in a dedicated project, Cloud Run invoker access only for the Discovery Engine service agent, Model Armor on every call, and separate identities for read and write tools. It works, but it remains a documented exception.
+
+Google now documents a way out. Gemini Enterprise can route custom MCP calls outbound through Agent Gateway instead of reaching your service from the internet:
+
+```text
+Gemini Enterprise → Agent Gateway → private network attachment into your VPC → Cloud Run MCP server with internal ingress
+```
+
+Only tools registered in Agent Registry are reachable, and IAP authorizes each tool call individually. The service never needs public ingress, so the exception disappears. Google’s codelab walks through the full setup: [Gemini Enterprise with Agent Gateway egress to a private custom MCP server](https://codelabs.developers.google.com/agw-ge-custom-mcp-egress-vpc-registry).
+
+Limits to check before you adopt it:
+
+- **Regions:** currently `us-central1` and `europe-west1` only.
+- **Certificates:** MCP endpoints still need a publicly trusted certificate, even over the private path.
+- **Perimeter:** the codelab doesn’t configure VPC Service Controls, so validate the combination in your own environment.
+- **Maturity:** no launch stage is stated; confirm general availability before production use.
+
+Where these limits rule it out, the containment pattern in section 5 remains the fallback.
+
+---
+
 ### Next Up
 
 The landing zone is a design. The next article turns it into code: a Terraform module set for the AI landing zone on top of Cloud Foundation Fabric, with each of the negative tests from this article wired in as a CI gate.
@@ -419,6 +444,7 @@ The landing zone is a design. The next article turns it into code: a Terraform m
 - [Override the organization policy for Custom MCP data stores](https://docs.cloud.google.com/gemini/enterprise/docs/connectors/custom-mcp-server/override-constraint-for-custom-mcp-data-stores)
 - [Configure allowed data sources](https://docs.cloud.google.com/gemini/enterprise/docs/connectors/configure-allowed-data-sources) and [allowed egress FQDNs](https://docs.cloud.google.com/gemini/enterprise/docs/connectors/configure-allowed-egress-fqdns)
 - [Set up a custom MCP server in Gemini Enterprise](https://docs.cloud.google.com/gemini/enterprise/docs/connectors/custom-mcp-server/set-up-custom-mcp-server)
+- [Gemini Enterprise with Agent Gateway egress to a private custom MCP server (codelab)](https://codelabs.developers.google.com/agw-ge-custom-mcp-egress-vpc-registry)
 - [Gemini Enterprise CMEK](https://docs.cloud.google.com/gemini/enterprise/docs/cmek) and [VPC Service Controls for Gemini Enterprise](https://docs.cloud.google.com/gemini/enterprise/docs/use-vpc-service-controls)
 - [IAM agent identity overview](https://docs.cloud.google.com/iam/docs/agent-identity-overview) and [Context-Aware Access for agents](https://docs.cloud.google.com/access-context-manager/docs/caa-agent-security)
 - [VPC Service Controls: supported identities](https://docs.cloud.google.com/vpc-service-controls/docs/supported-identities)
