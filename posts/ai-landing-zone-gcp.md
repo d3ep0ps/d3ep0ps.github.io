@@ -24,7 +24,7 @@ In most cases the pilots work. What is missing is a basis on which Security can 
 
 | Concern | What the landing zone does | What leadership gets |
 |---|---|---|
-| **Approval at scale** | Security approves the platform once; new agents inherit its controls | Each new agent passes a pipeline check instead of a bespoke security review |
+| **Approval at scale** | Security approves the platform floor once; each agent's specific data/tool grants are reviewed in its deploy PR | Platform rules aren't re-litigated per launch; reviews focus only on the agent's declared grants |
 | **Blast radius** | Agents, tools, and data live in separate projects; access is granted per dataset, not per project | A compromised agent reaches the data it was granted, not the wider estate |
 | **Data residency and key custody** | Storage restricted to approved locations (the EU, in this blueprint); customer-managed encryption keys held by Security | Auditable evidence supporting GDPR and data-residency commitments |
 | **Accountability** | Per-agent identities replace shared service accounts | Actions in the audit log trace to an individual agent, not to a shared account |
@@ -345,6 +345,8 @@ The [AI Gateway article](#ai-gateway-enforcement) introduced the **Gateway Bypas
 
 **It checks every way a grant can arrive.** An agent with no inference role on its project can still inherit one from a folder, through a Google group it belongs to, or through a fleet binding that matches every agent in a trust domain. A probe that reads one IAM policy and matches the agent's exact member string misses all three, and reports PASS. The landing zone version asks the question closer to how IAM evaluates it: Cloud Asset Inventory's policy analyzer, with group expansion, across the full ancestry, for the inference permissions specifically. A separate scan looks for `principalSet://` bindings on the agent trust domain, because one fleet grant applies to every agent at once. A PASS then means no path to direct model access was found, not merely that one binding is absent.
 
+> **Validation finding (October 2026):** When I ran this check (`T12`) against a live reference organization, it **failed in both runs**. Deploying the first agent in a project causes Google Cloud to automatically bind `roles/aiplatform.agentDefaultAccess` (which includes `aiplatform.endpoints.predict`) to the project-wide agent `principalSet://`, even when your Terraform grants nothing (`T19`, one run). Preventing unapproved agents in the project from calling models directly requires a project-level **IAM deny policy** on `aiplatform.googleapis.com/endpoints.predict` with approved agent `principal://` identities listed in `exceptionPrincipals` (`T18`, tested in one run). See [Validating an AI Landing Zone on GCP](#ai-landing-zone-validation-gcp) for the full test output and configuration.
+
 Combined with the direct-egress and proxied-egress probes, and a scan for credential-shaped environment variables, that's the minimum evidence for the Reach boundary. The full blueprint maps all eighteen checks (the published seventeen plus R7) to a verification command each.
 
 ## 9. Rollout: gates, not dates
@@ -370,10 +372,10 @@ These are the details that don't appear on architecture diagrams and do appear i
 1. **CMEK for Gemini Enterprise must be registered before the first data store.** CMEK is supported only for `us` and `eu` multi-region apps and data stores, not `global`. Resources created before the key is registered stay Google-encrypted, and an existing app or connector can't switch keys later. Register the key (it's manageable in Terraform via `google_discovery_engine_cmek_config`) and grant the Discovery Engine service agent `cryptoKeyEncrypterDecrypter` *first*.
 2. **VPC Service Controls must be enforced before the first data store, too.** Google doesn't support enforcing a perimeter on a Gemini Enterprise project that already has data stores; the fix is delete and recreate. Phase 3 comes before Phase 5 for this reason alone.
 3. **A single-region location policy breaks Gemini Enterprise.** Its apps live in the `global`, `us`, or `eu` multi-regions, and some resources — Model Armor floor settings among them — exist only at `global`. Allow `in:eu-locations` plus `global`. And remember: `gcp.resourceLocations` governs where resources are *stored*, not which inference endpoint answers. Inference residency is governed by the model allowlist and endpoint choice.
-4. **`restrictNonCmekServices` will break things you didn't know created buckets.** Cloud Build's default source and log buckets are the classic case. Pre-create CMEK buckets and point the tooling at them; where that's impossible, a project-scoped exemption for CI/CD projects only — registered, reviewed quarterly, never for projects holding AI data.
+4. **`restrictNonCmekServices` will break things you didn't know created buckets.** Cloud Build's default source and log buckets are the classic case. Pre-create CMEK buckets and point the tooling at them; where that's impossible, a project-scoped exemption for CI/CD projects only — registered, reviewed quarterly, never for projects holding AI data. *(Validation note, October 2026: in testing [`T10`], a plain `gcloud builds submit` is actually blocked first by `gcp.resourceLocations` because Cloud Build creates its default staging bucket in `us`; the CMEK refusal appears with a regional staging bucket, and a pre-created cross-project CMEK staging bucket [`T21`, one run] requires `roles/storage.admin` on that bucket for the build service account.)*
 5. **A custom domain silently drops Cloud Run's ID token** for Gemini Enterprise calls (section 5). The connector "works" in testing with relaxed IAM and fails, or worse, ships without the check.
 6. **Agent Gateway's VPC-SC enforcement applies only to gateways created after September 8, 2026**, and requires agent connectivity templates in `ALL_TRAFFIC` mode. A gateway built in the summer pilot doesn't get it retroactively — plan to recreate it.
-7. **The managed agent runtime ignores your egress firewall.** Outside a VPC-SC perimeter, Agent Platform runtime reaches the internet directly from Google's tenant network. Your firewall and proxy govern only the traffic that enters your VPC. The perimeter is what closes the direct path (section 6).
+7. **The managed agent runtime ignores your egress firewall.** Outside a VPC-SC perimeter, Agent Platform runtime reaches the internet directly from Google's tenant network. Your firewall and proxy govern only the traffic that enters your VPC. The perimeter is what closes the direct path (section 6). *(Validation note, October 2026: in testing [`T14R`, one run], an agent deployed before its project joined the perimeter stopped working once the perimeter was enforced because its own `SessionService.CreateSession` call was refused as an outside caller [`NO_MATCHING_ACCESS_LEVEL`]; with a VPC-SC ingress rule for the agent identities [`T23`, one run], the pre-perimeter agent kept internet fetch access while the agent deployed after enforcement had none.)*
 8. **You can't let Gemini Enterprise into a perimeter by identity.** Cloud Run invocations don't support VPC-SC ingress rules that name IAM principals. Gemini-facing services run with ingress `all`, outside perimeter enforcement for inbound calls, so they belong in their own project with their own controls (section 5).
 9. **Memory Bank and Sessions on the global endpoint can't use CMEK.** If your encryption policy is non-negotiable, the agent's memory must use a multi-regional or regional endpoint — a decision to make before memory holds a year of customer conversations.
 
@@ -393,11 +395,11 @@ Executives don't need the constraint list. They need seven numbers that tell the
 
 And a cadence that keeps them honest: weekly review of block and denial rates; monthly model-allowlist and new-constraint reviews (Google ships new managed constraints for AI services regularly); quarterly agent-access recertification and red-team exercise; twice-yearly restore drill on CMEK-encrypted data. Once a month, put the floor's own running cost (proxies, NAT, keys) next to the token spend it is protecting.
 
-## Conclusion: approve the floor once
+## Conclusion: approve the floor once, review each agent's grants in PR
 
 In organizations stuck between pilot and production, the pattern is usually the same. Each agent arrives at the security review as a fresh negotiation: what can it reach, whose credentials does it hold, where does its data go, who approves its tools. The review takes weeks, the answers differ team to team, and the backlog grows faster than the reviewers.
 
-An AI landing zone changes the question. Security approves the *platform* once — its policies, perimeters, identities, and gates, each backed by a test that fails when the control is missing. After that, a new agent doesn't need a new argument. It needs to land on the floor and pass the same assessment as everything else.
+An AI landing zone separates the two questions. Security approves the *platform floor* once — its organization policies, perimeters, identity model, and default-deny rules, each backed by a test that fails when the control is missing. After that, a new agent doesn't re-litigate the platform. Its deployment PR declares only its specific dataset grants, tool bindings, and policy exceptions, which are reviewed and checked against the floor in CI on every deploy.
 
 That's the difference between an organization that has AI agents and one that can run them.
 
@@ -430,9 +432,9 @@ Where these limits rule it out, the containment pattern in section 5 remains the
 
 ---
 
-### Next Up
+### Next Up: Reference Validation Results
 
-The landing zone is a design. The next article turns it into code: a Terraform module set for the AI landing zone on top of Cloud Foundation Fabric, with each of the negative tests from this article wired in as a CI gate.
+A prescribed negative test is a test plan, not a test result. In the follow-up article — **[Validating an AI Landing Zone on GCP: What Passed, What Failed, What I Couldn't Test](#ai-landing-zone-validation-gcp)** — I ran 17 baseline tests twice and 9 follow-up tests once in a reference Google Cloud organization built on Cloud Foundation Fabric, publishing the pre-registered scripts, redacted raw outputs, errata, and limitations in the [ai-landing-zone-validation repository](https://github.com/d3ep0ps/ai-landing-zone-validation).
 
 ## References
 
