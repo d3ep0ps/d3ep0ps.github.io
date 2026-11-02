@@ -247,7 +247,7 @@ Repeated across runs, each as an attempted and refused action unless noted:
 - One small organization, one operator, one region, eight days. Repeats show repeatability *here*.
 - A PASS shows that one specific attempt had the stated outcome at that moment. It doesn't show that no other path exists.
 - Single-run results are labelled as such in the repository.
-- Google suspended the runtime project twice during testing, with a generic Terms of Service notice and no named activity. Both suspensions were lifted after appeal, without a stated cause. I make no claim about why.
+- Google suspended the runtime project twice during testing, with a generic Terms of Service notice and no named activity. I replaced the first project; the second was reinstated after appeal, without a stated cause. I make no claim about why.
 
 ---
 
