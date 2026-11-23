@@ -7,7 +7,7 @@
 > **What I found, in five lines**
 >
 > 1. **Fabric can build the floor's static controls now.** Five Terraform layers built only from Cloud Foundation Fabric modules, with no raw provider resources. The catch: eight of the twelve upstream PRs aren't in a release tag yet, so the code pins a `master` commit until `v61` is out.
-> 2. **An empty organization — and my own omissions — fought back.** Six blockers stopped the first deploy and the CMEK follow-up, none shown by `terraform plan`: concurrent policy writes, role propagation delays, a billing-account project cap, a transiently tainted project, a missing Shared VPC role, and a disabled quota-project KMS API.
+> 2. **An empty organization — and my own omissions — fought back.** Six blockers stopped the first deploy and the CMEK follow-up, none shown by `terraform plan`: concurrent policy writes, role propagation delays, a billing-account project cap, a project tainted by a transient `403`, a missing Shared VPC role, and a disabled quota-project KMS API.
 > 3. **The floor worked before I finished building it.** The Model Armor floor in layer 0 refused one of my own templates in layer 3 because I'd left out a filter. Nobody asked it to; it simply did its job.
 > 4. **The first check found three real gaps.** Only 7 of 14 automated checks passed at first, surfacing three omissions I'd deferred and forgotten: no model allowlist, no customer-managed keys, and a perimeter still in dry-run. Closing those gaps and updating the verification setup brought the second run to 12 of 14.
 > 5. **The checks needed live verification too.** One check couldn't decide in Run 1 because it queried an invalid constraint name (`NOT_FOUND`) that slipped past unit tests, one Asset Inventory analysis accepts only an organization as scope, and another returned nothing for a constraint the landing zone enforces. Each would have looked like a landing-zone failure if taken at face value.
@@ -46,7 +46,7 @@ So before building the landing zone, I contributed the missing pieces to Fabric.
 
 | PR | What it added | Used here for |
 | --- | --- | --- |
-| [#4275](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4275), [#4309](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4309), [#4439](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4439) | AI and agent services in the FAST VPC-SC restricted services list | The 6 new AI/agent services inside this perimeter's 16-service restricted list (alongside Storage, KMS, BigQuery, Cloud Run, etc.), plus the remaining AI services for FAST |
+| [#4275](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4275), [#4309](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4309), [#4439](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4439) | AI and agent services in the FAST VPC-SC restricted services list | 6 of the perimeter's 16 restricted services (the rest: Storage, KMS, BigQuery, Cloud Run…); full list for FAST |
 | [#4288](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4288), [#4405](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4405) | Vertex AI, Gemini Enterprise and Cloud Run controls in the FAST hardened dataset | The org policy set on the root folder |
 | [#4310](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4310), [#4361](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4361), [#4379](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4379) | `model_armor_floor_setting` in the `organization`, `folder` and `project` modules | The folder-wide Model Armor floor |
 | [#4383](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4383), [#4397](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4397) | The same floor in FAST `0-org-setup` and `project-factory` | The FAST path (planned) |
@@ -291,7 +291,9 @@ Fourteen checks could run against this landing zone. The others in the suite nee
 | 13 | Governed assets for key creation (`analyzeOrgPolicyGovernedAssets`) | Asset analysis | Couldn't decide (API off) | **Failed** *(empty result; new version: organization scope)* |
 | 14 | Deployed agent identities | Config read | Not tested (no agents) | Not tested (no agents) |
 
-Look closely at checks #6 and #7: both passed in an organization with **zero agents deployed**. That is the easy case, before Part 3's first-deploy automatic grant (`roles/aiplatform.agentDefaultAccess`) has occurred. And in Run 1, the three failures (#8–#10) were fair: each was a decision I'd deferred and then forgotten I'd deferred. The model allowlist is per customer, so the default is empty. CMEK costs money and locks resources to the key's region, so it was off. The perimeter was in dry-run on purpose. But a landing zone with an empty allowlist lets any model through, and a check that says so is doing its job. And #12 and #13 got different Run 1 labels for the same disabled Cloud Asset API (`SERVICE_DISABLED`) because #12 errored in a precondition step listing projects (so "Not tested"), while #13 had no precondition and errored in the test call itself (so "Couldn't decide").
+Look closely at checks #6 and #7: both passed in an organization with **zero agents deployed**. That is the easy case, before Part 3's first-deploy automatic grant (`roles/aiplatform.agentDefaultAccess`) has occurred. And in Run 1, the three failures (#8–#10) were fair: each was a decision I'd deferred and then forgotten I'd deferred. The model allowlist is per customer, so the default is empty. CMEK costs money and locks resources to the key's region, so it was off. The perimeter was in dry-run on purpose. But a landing zone with an empty allowlist lets any model through, and a check that says so is doing its job.
+
+Checks #12 and #13 got different Run 1 labels for the same disabled Cloud Asset API (`SERVICE_DISABLED`) because #12 errored in a precondition step listing projects (so "Not tested"), while #13 had no precondition and errored in the test call itself (so "Couldn't decide").
 
 ### Closing the gaps — and what else changed before Run 2
 
@@ -346,7 +348,7 @@ What this landing zone doesn't do yet is tell anyone when a control fires. The f
 1. **Pick the Fabric version.** Use `v61` or later once it's out; until then, the pinned `master` commit.
 2. **Prepare a quota project outside the landing zone,** with the APIs from the README on (including `cloudkms` if you want CMEK). Grant the operator the listed roles.
 3. **Apply `00-foundation`** with your allowlists filled in. Expect a second apply for propagation and concurrent policy writes.
-4. **Apply `01-perimeter` in dry-run.** Leave it for a working day, read the dry-run violations, add the egress rule for your quota project, then set `enforce = true`.
+4. **Apply `01-perimeter` in dry-run** with your operator identities in the ingress rule. Leave it for a working day, read the dry-run violations, add the egress rule for your quota project, then set `enforce = true`.
 5. **Apply `02-network` to `04-workload`.** The defaults are free: no proxy, no gateway, no agent.
 6. **Plan every layer again** through the enforced perimeter. Every plan should say "No changes".
 7. **Check it with code, and read how each check passed.** A configuration read is not an observed refusal, a check that couldn't run isn't a pass, and a check isn't verified until it has run against a real organization.
