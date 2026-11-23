@@ -2,15 +2,15 @@
 
 > **"A landing zone you can't rebuild from code is a diagram. A landing zone you can't check from code is a promise."**
 
-*I built the AI landing zone described in my earlier articles from Cloud Foundation Fabric modules, deployed it into an empty Google Cloud organization, and then checked it with code. This is what it took, and what the checks found.*
+*Part 4 of the AI Landing Zone series. I built the AI landing zone described in Parts 1–3 from Cloud Foundation Fabric modules, deployed it into an empty Google Cloud organization, and then checked it with code. This is what it took, and what the checks found.*
 
 > **What I found, in five lines**
 >
-> 1. **Fabric can build the floor's static controls now.** Five Terraform layers referencing 13 Fabric modules (8 of them create resources in this free-defaults deploy; the other 5 are optional or empty and only wired in code), 189 Google Cloud resources (plus 3 `local_file` tfvars handoffs) and no raw `google_*` resources. The catch: 8 of the 12 upstream PRs aren't in a release tag yet (newest is `v60.0.0`), so for now the code pins a `master` commit.
-> 2. **An empty organization — and my own omissions — fought back.** Five things stopped the first deploy and a sixth stopped the CMEK follow-up — none shown by `terraform plan`: concurrent org policy writes, role propagation delays, a billing account capped at five projects, a project marked tainted after a transient `403`, a Shared VPC permission missing from my own README, and a quota-project KMS API that had to be enabled first.
-> 3. **The floor worked before I finished building it.** The Model Armor floor in layer 0 refused one of my own templates in layer 3, because I'd left out a filter. Nobody asked it to; it simply did its job.
-> 4. **The first check found three real gaps.** 7 of 14 automated checks passed. Three failures were mine: no model allowlist, no customer-managed keys, and a perimeter still in dry-run. After closing those gaps, enabling Cloud Asset API/IAM, and updating three checks (one rewritten, two moved to organization scope), the second run passed 12 of 14.
-> 5. **The checks needed live verification too.** One check failed in Run 1 because it queried a wrong constraint name that slipped past unit tests, one Asset Inventory analysis accepts only an organization as scope, and another returned nothing for a constraint the landing zone enforces. Each one would have read as a landing-zone failure if I'd taken the checks at face value.
+> 1. **Fabric can build the floor's static controls now.** Five Terraform layers built only from Cloud Foundation Fabric modules, with no raw provider resources. The catch: eight of the twelve upstream PRs aren't in a release tag yet, so the code pins a `master` commit until `v61` is out.
+> 2. **An empty organization — and my own omissions — fought back.** Six blockers stopped the first deploy and the CMEK follow-up, none shown by `terraform plan`: concurrent policy writes, role propagation delays, a billing-account project cap, a transiently tainted project, a missing Shared VPC role, and a disabled quota-project KMS API.
+> 3. **The floor worked before I finished building it.** The Model Armor floor in layer 0 refused one of my own templates in layer 3 because I'd left out a filter. Nobody asked it to; it simply did its job.
+> 4. **The first check found three real gaps.** Only 7 of 14 automated checks passed at first, surfacing three omissions I'd deferred and forgotten: no model allowlist, no customer-managed keys, and a perimeter still in dry-run. Closing those gaps and updating the verification setup brought the second run to 12 of 14.
+> 5. **The checks needed live verification too.** One check couldn't decide in Run 1 because it queried an invalid constraint name (`NOT_FOUND`) that slipped past unit tests, one Asset Inventory analysis accepts only an organization as scope, and another returned nothing for a constraint the landing zone enforces. Each would have looked like a landing-zone failure if taken at face value.
 >
 > **Three questions to ask before you call a landing zone done**
 >
@@ -40,13 +40,13 @@ Cloud Foundation Fabric is Google's open-source collection of Terraform modules 
 
 Fabric does not ship an "AI landing zone". The maintainers want to define an AI strategy first, and they're right not to rush it. Most of an AI landing zone is per customer: which models are allowed, which hosts agents may reach, who may call a model directly. A shared dataset can't decide that for you. What Fabric can provide is the modules. In October that was the problem: in the validation harness, the Model Armor floor and templates, the Agent Registry, and parts of the perimeter configuration had to be written as raw provider resources.
 
-For comparison, Microsoft does ship one. The [Azure AI Landing Zones](https://azure.github.io/AI-Landing-Zones) are an official reference architecture with Bicep and Terraform implementations built on Azure Verified Modules. On Google Cloud, the closest thing is the Cloud Foundation Toolkit's [enterprise agent platform blueprint](https://github.com/GoogleCloudPlatform/terraform-google-enterprise-genai), the repository that used to hold the enterprise generative AI and ML blueprint. It covers much of the same ground: Agent Gateway, Agent Engine, Model Armor templates and a project-level floor, a VPC-SC perimeter with a dry-run mode, CMEK, and AI org policies. It even gives the same advice about running the perimeter in dry-run before enforcing it. Where it differs is the question this series cares about most. It [grants every agent in the project `roles/aiplatform.user`](https://github.com/GoogleCloudPlatform/terraform-google-enterprise-genai/blob/b086b6dbd8131ad63547e4fe24495bd076afdf46/modules/agent_engine/main.tf#L36-L46), with no variable to turn that off ([I've asked for one](https://github.com/GoogleCloudPlatform/terraform-google-enterprise-genai/issues/193)), and it has no model allowlist and no deny policy on direct model calls. If your agents may call any model directly, that blueprint is a good place to start. If they may not, the AI part of the landing zone is still yours to put together. Google's general [enterprise foundations blueprint](https://github.com/terraform-google-modules/terraform-example-foundation) has none of the AI controls.
+For comparison, Microsoft does ship one. The [Azure AI Landing Zones](https://azure.github.io/AI-Landing-Zones) are an official reference architecture with Bicep and Terraform implementations built on Azure Verified Modules. On Google Cloud, the closest thing is the Cloud Foundation Toolkit's [enterprise agent platform blueprint](https://github.com/GoogleCloudPlatform/terraform-google-enterprise-genai), the repository that used to hold the enterprise generative AI and ML blueprint. It covers much of the same ground: Agent Gateway, Agent Engine (now Agent Runtime), Model Armor templates and a project-level floor, a VPC-SC perimeter with a dry-run mode, CMEK, and AI org policies. It even gives the same advice about running the perimeter in dry-run before enforcing it. Where it differs is the question this series cares about most. It [grants every agent in the project `roles/aiplatform.user`](https://github.com/GoogleCloudPlatform/terraform-google-enterprise-genai/blob/b086b6dbd8131ad63547e4fe24495bd076afdf46/modules/agent_engine/main.tf#L36-L46), with no variable to turn that off ([I've asked for one](https://github.com/GoogleCloudPlatform/terraform-google-enterprise-genai/issues/193)), and it has no model allowlist and no deny policy on direct model calls. If your agents may call any model directly, that blueprint is a good place to start. If they may not, the AI part of the landing zone is still yours to put together. Google's general [enterprise foundations blueprint](https://github.com/terraform-google-modules/terraform-example-foundation) has none of the AI controls.
 
 So before building the landing zone, I contributed the missing pieces to Fabric. These merged PRs are what the landing zone now relies on:
 
 | PR | What it added | Used here for |
 | --- | --- | --- |
-| [#4275](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4275), [#4309](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4309), [#4439](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4439) | AI and agent services in the FAST VPC-SC restricted services list | The 16 services restricted by the perimeter |
+| [#4275](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4275), [#4309](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4309), [#4439](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4439) | AI and agent services in the FAST VPC-SC restricted services list | The 6 new AI/agent services inside this perimeter's 16-service restricted list (alongside Storage, KMS, BigQuery, Cloud Run, etc.), plus the remaining AI services for FAST |
 | [#4288](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4288), [#4405](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4405) | Vertex AI, Gemini Enterprise and Cloud Run controls in the FAST hardened dataset | The org policy set on the root folder |
 | [#4310](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4310), [#4361](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4361), [#4379](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4379) | `model_armor_floor_setting` in the `organization`, `folder` and `project` modules | The folder-wide Model Armor floor |
 | [#4383](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4383), [#4397](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric/pull/4397) | The same floor in FAST `0-org-setup` and `project-factory` | The FAST path (planned) |
@@ -94,7 +94,7 @@ Four rules shaped the code:
 
 - **Fabric modules only.** A raw `google_*` resource is allowed only where no module exists, and it goes on a list in `docs/fabric-gaps.md`. That list is empty.
 - **One Fabric pin for every module**, moved by a script.
-- **Anything that costs money by the hour, or can't be undone, is off by default.** That covers the egress proxy, the Agent Gateway, an always-on agent, a locked log bucket and an enforced perimeter.
+- **Anything that costs money by the hour, can't be undone, or can lock out traffic before a dry-run review is off by default.** That covers the egress proxy, the Agent Gateway, an always-on agent, a locked log bucket and an enforced perimeter.
 - **Per-customer values come from `terraform.tfvars`.** That covers models, hosts, identities and allowlists, the same rule the Fabric maintainers apply to their datasets.
 
 ### Layer 0: the guardrails, as module inputs
@@ -145,7 +145,7 @@ perimeters = {
 }
 ```
 
-The access policy is scoped to the landing zone's root folder, so it doesn't interfere with an organization-wide policy. Because a scoped policy needs an organization-level policy to exist, the layer can create an empty one if there isn't one.
+The access policy is scoped to the landing zone's root folder, so it doesn't interfere with an organization-wide policy. Because a scoped policy needs an organization-level policy to exist, the layer can create an empty one if there isn't one. An `operators` ingress rule lets the operator identities reach the perimeter's restricted services from outside, so Terraform can still manage the projects once enforcement is on.
 
 ### Layers 2 and 3: private paths and the platform
 
@@ -187,13 +187,13 @@ Agent calls a model (aiplatform.googleapis.com/endpoints.predict)
           └─ project is eligible for the agent ───────────────▶ allows through
          │
          ▼
-       2. IAM Allow (agentDefaultAccess)
-          └─ role is re-added on every agent deploy ──────────▶ allows
+       2. IAM Deny (Layer 4: project / Layer 0: folder) ◄── checked before Allow
+          ├── all other project agents (project_agents)      ─▶ [✕] DENIED
+          └── in exception_principals (approved_agents)      ─▶ passes to Allow
          │
          ▼
-       3. IAM Deny (Layer 4: project / Layer 0: folder) ◄── overrides Allow
-          ├── in exception_principals (approved_agents)      ─▶ [✓] ALLOWED
-          └── all other project agents (project_agents)      ─▶ [✕] DENIED
+       3. IAM Allow (agentDefaultAccess)
+          └─ role is re-added on every agent deploy          ─▶ [✓] ALLOWED
 ```
 
 ---
@@ -213,7 +213,7 @@ A clean `terraform plan` shows what Terraform intends to do. It can't show what 
 | `409 CONCURRENT_POLICY_CHANGES` on org policies | 16 policy writes to one folder at once (the 15 hardened policies plus the location restriction) | `-parallelism=5`, then a second apply |
 | `403` on the floor setting right after the grants | New role grants take minutes to take effect | Waited and applied again |
 | `Precondition check failed` linking billing | The new billing account allows about five linked projects | Made the data project optional and turned it off |
-| A project marked as tainted after a transient `403` | Terraform wanted to delete and recreate it | `terraform untaint`: a deleted project ID stays reserved for 30 days |
+| A project marked as tainted after a transient `403` | Terraform wanted to delete and recreate it | `terraform untaint`: a deleted project ID can never be reused (even after the 30-day restore window) |
 | Missing `compute.organizations.enableXpnHost` | Making the Shared VPC host needs a role I hadn't listed | Granted Shared VPC admin on the root folder and added it to the README |
 | *(Follow-up CMEK apply)* `403` from the KMS API in the quota project | With user credentials, every API call is billed to the quota project, so its APIs must be on | Enabled the API there and added it to the README's list |
 
@@ -241,7 +241,7 @@ After the first deploy the perimeter ran in dry-run for about an hour while Run 
 logName:"cloudaudit.googleapis.com%2Fpolicy" AND protoPayload.metadata.dryRun=true
 ```
 
-There was one violation, logged three times: a Cloud Storage call made with my operator credentials inside the perimeter, with the request billed to the quota project outside it, which counts as an egress (`RESOURCES_NOT_IN_SAME_SERVICE_PERIMETER`). That's the same quota-project problem the validation found in October. The fix is an egress rule that lets the operator identities reach that one project:
+With the `operators` ingress rule already in place, there was only one violation, logged three times: a Cloud Storage call made with my operator credentials inside the perimeter, with the request billed to the quota project outside it, which counts as an egress (`RESOURCES_NOT_IN_SAME_SERVICE_PERIMETER`). That's the same quota-project problem the validation found in October. The fix is an egress rule that lets the operator identities reach that one project:
 
 ```hcl
 quota_project_egress = {
@@ -291,7 +291,7 @@ Fourteen checks could run against this landing zone. The others in the suite nee
 | 13 | Governed assets for key creation (`analyzeOrgPolicyGovernedAssets`) | Asset analysis | Couldn't decide (API off) | **Failed** *(empty result; new version: organization scope)* |
 | 14 | Deployed agent identities | Config read | Not tested (no agents) | Not tested (no agents) |
 
-Look closely at checks #6 and #7: both passed in an organization with **zero agents deployed**. That is the easy case, before Part 3's first-deploy automatic grant (`roles/aiplatform.agentDefaultAccess`) has occurred. And in Run 1, the three failures (#8–#10) were fair: each was a decision I'd deferred and then forgotten I'd deferred. The model allowlist is per customer, so the default is empty. CMEK costs money and locks resources to the key's region, so it was off. The perimeter was in dry-run on purpose. But a landing zone with an empty allowlist lets any model through, and a check that says so is doing its job.
+Look closely at checks #6 and #7: both passed in an organization with **zero agents deployed**. That is the easy case, before Part 3's first-deploy automatic grant (`roles/aiplatform.agentDefaultAccess`) has occurred. And in Run 1, the three failures (#8–#10) were fair: each was a decision I'd deferred and then forgotten I'd deferred. The model allowlist is per customer, so the default is empty. CMEK costs money and locks resources to the key's region, so it was off. The perimeter was in dry-run on purpose. But a landing zone with an empty allowlist lets any model through, and a check that says so is doing its job. And #12 and #13 got different Run 1 labels for the same disabled Cloud Asset API (`SERVICE_DISABLED`) because #12 errored in a precondition step listing projects (so "Not tested"), while #13 had no precondition and errored in the test call itself (so "Couldn't decide").
 
 ### Closing the gaps — and what else changed before Run 2
 
@@ -381,3 +381,7 @@ The landing-zone code is public in [secure-ai-landing-zone](https://github.com/d
 - *[Landing zone repository (secure-ai-landing-zone)](https://github.com/d3ep0ps/secure-ai-landing-zone)*
 - *[Validation repository and test suite](https://github.com/d3ep0ps/ai-landing-zone-validation)*
 - *[Cloud Foundation Fabric](https://github.com/GoogleCloudPlatform/cloud-foundation-fabric)*
+
+---
+
+*Vitaliy Zhhuta is a System & Solution Architect writing at [d3ep0ps.com](https://d3ep0ps.com) about infrastructure, security, and AI systems — from first principles, without the hype. He designs, delivers, and verifies AI landing zones like this one with automated checks for organizations moving agents from pilot to production; if you want to build one or run checks against yours, he's on [LinkedIn](https://linkedin.com/in/vitaliyzhhuta).*
